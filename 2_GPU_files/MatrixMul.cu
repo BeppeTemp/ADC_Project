@@ -1,5 +1,6 @@
 #include <cuda.h>
 #include <stdio.h>
+#include <cuda_fp16.h>
 //#include <cuda_runtime.h>
 //#include <curand_kernel.h>
 #include <string.h>
@@ -13,7 +14,7 @@ struct Startup {
     int randomMod = 2;
     int seedValue = time(nullptr);
     int maxDimension = INT_MAX;
-    int startDimension = 2;
+    int startDimension = 8;
     int threadsPerBlock = 256;
     int onlyMatrixSize = NULL;
     char* outputDirectory = ".";
@@ -25,6 +26,7 @@ struct Startup {
 struct squareMatrix {
     int* elements;
     int dimension;
+    
 };
 
 const char* help =
