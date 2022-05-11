@@ -96,7 +96,7 @@
     {
       "type": "shell",
       "label": "CUDA Profiling",
-      "command": "nvcc -lcublas -gencode=arch=compute_61,code=sm_61 -g ${fileDirname}/${fileBasename} -o ${fileBasenameNoExtension}.out && nvprof ./${fileBasenameNoExtension}.out && rm ${fileBasenameNoExtension}.out",
+      "command": "nvcc -lcublas -gencode=arch=compute_75,code=sm_75 -g ${fileDirname}/${fileBasename} -o ${fileBasenameNoExtension}.out && nvprof ./${fileBasenameNoExtension}.out && rm ${fileBasenameNoExtension}.out",
       "presentation": {
         "reveal": "always"
       },

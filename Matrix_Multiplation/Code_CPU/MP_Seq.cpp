@@ -6,15 +6,6 @@ using namespace std::chrono;
 
 #define SIZE 1024
 
-/* ------------------------- */
-// Results:
-/* ------------------------- */
-// Size 256:    50 ms
-// Size 512:    535 ms
-// Size 1024:   4421 ms
-// Size 2048:   130605 ms
-/* ------------------------- */
-
 void time_stats(float micro_seconds) {
     cout << "Execution times:" << endl;
     printf("    * %.0f μs \n", micro_seconds);
