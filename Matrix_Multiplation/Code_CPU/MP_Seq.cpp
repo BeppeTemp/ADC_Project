@@ -27,12 +27,14 @@ int main() {
         mat_b = (float*)malloc(nBytes);
         mat_res = (float*)malloc(nBytes);
 
+        #pragma omp parallel for schedule(dynamic)
         for (int j = 0; j < sizes[k] * sizes[k]; j++) {
             mat_a[j] = 1;
             mat_b[j] = 1;
         }
 
         auto start = high_resolution_clock::now();
+        #pragma omp parallel for schedule(dynamic)
         for (int row = 0; row < sizes[k]; row++) {
             for (int col = 0; col < sizes[k]; col++) {
                 for (int offset = 0; offset < sizes[k]; offset++) {
@@ -43,6 +45,7 @@ int main() {
         auto stop = high_resolution_clock::now();
 
         long check = 0;
+        #pragma omp parallel for schedule(dynamic)
         for (int t = 0; t < sizes[k] * sizes[k]; t++) {
             check += (long)mat_res[t];
         }

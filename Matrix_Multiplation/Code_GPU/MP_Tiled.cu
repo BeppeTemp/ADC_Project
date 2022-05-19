@@ -4,9 +4,8 @@
 #include <unistd.h>
 #include <chrono>
 
-#define BLOCK_DIM 16
-
-#define TILE_WIDTH 16
+#define BLOCK_DIM 8
+#define TILE_WIDTH 8
 
 using namespace std::chrono;
 
@@ -18,39 +17,38 @@ void time_stats(float micro_seconds) {
     printf("\n");
 }
 
-
-__global__ void MatrixMulKernelTiled(float *mat_a, float *mat_b, float *res_mat, int size) {
-    __shared__ float M_ds[TILE_WIDTH][TILE_WIDTH];
-    __shared__ float N_ds[TILE_WIDTH][TILE_WIDTH];
+__global__ void MatrixMulKernelTiled(float* mat_a, float* mat_b, float* res_mat, int size) {
+    __shared__ float m_ds[TILE_WIDTH][TILE_WIDTH];
+    __shared__ float n_ds[TILE_WIDTH][TILE_WIDTH];
 
     int bx = blockIdx.x;
     int by = blockIdx.y;
     int tx = threadIdx.x;
     int ty = threadIdx.y;
 
-    int Row = by * TILE_WIDTH + ty;
-    int Col = bx * TILE_WIDTH + tx;
+    int row = by * TILE_WIDTH + ty;
+    int col = bx * TILE_WIDTH + tx;
 
-    if ((Row < size) && (Col < size)) {
-        float Pvalue = 0;
-        for (int m = 0; m <= size / TILE_WIDTH; ++m) {
-            M_ds[ty][tx] = mat_a[Row * size + (m * TILE_WIDTH + tx)];
-            N_ds[ty][tx] = mat_b[(m * TILE_WIDTH + ty) * size + Col];
+    float Pvalue = 0;
+
+    for (int m = 0; m <= size / TILE_WIDTH; m++) {
+        m_ds[ty][tx] = mat_a[row * size + (m * TILE_WIDTH + tx)];
+        n_ds[ty][tx] = mat_b[(m * TILE_WIDTH + ty) * size + col];
+
+        __syncthreads();
+
+        for (int k = 0; k < TILE_WIDTH; ++k) {
+            Pvalue += m_ds[ty][k] * n_ds[k][tx];
 
             __syncthreads();
-
-            for (int k = 0; k < TILE_WIDTH; ++k) {
-                Pvalue += M_ds[ty][k] * N_ds[k][tx];
-            __syncthreads();
-            }
         }
-
-        res_mat[Row * size + Col] = Pvalue;
     }
+
+    res_mat[row * size + col] = Pvalue;
 }
 
 int main(void) {
-    int sizes[5] = {1024, 2048, 4096, 8192, 16384};
+    int sizes[5] = {2048, 2048, 2048, 2048, 2048};
 
     float *mat_a_host, *mat_b_host, *mat_res_host_gpu;
     float *mat_a_dev, *mat_b_dev, *mat_res_dev;
@@ -90,7 +88,7 @@ int main(void) {
 
         long check = 0;
         for (int k = 0; k < sizes[i] * sizes[i]; k++) {
-            check += (long) mat_res_host_gpu[i];
+            check += (long)mat_res_host_gpu[i];
         }
 
         printf("Matrix size: %d x %d \n", sizes[i], sizes[i]);
