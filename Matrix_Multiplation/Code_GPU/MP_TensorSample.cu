@@ -24,7 +24,7 @@
 
 
 //__global__ void WMMAINT8()
-using namespace nvcuda;
+using namespace cuda;
 
 __host__ void InitMatrix(half *A, half *B, float *C)
 {

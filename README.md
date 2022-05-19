@@ -29,3 +29,5 @@
 | Shared Memory Per Block             | 49152 bytes             |
 | Registers Per Block                 | 65536 32-bit            |
 | Warp size                           | 32                      |
+
+numero di blocchi massimo 16
