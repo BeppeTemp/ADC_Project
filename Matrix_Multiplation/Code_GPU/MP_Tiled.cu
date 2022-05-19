@@ -34,15 +34,15 @@ __global__ void MatrixMulKernelTiled(float *mat_a, float *mat_b, float *res_mat,
     if ((Row < size) && (Col < size)) {
         float Pvalue = 0;
         for (int m = 0; m <= size / TILE_WIDTH; ++m) {
-            M_ds[ty][tx] = mat_a[Row * size + m * TILE_WIDTH + tx];
+            M_ds[ty][tx] = mat_a[Row * size + (m * TILE_WIDTH + tx)];
             N_ds[ty][tx] = mat_b[(m * TILE_WIDTH + ty) * size + Col];
 
             __syncthreads();
 
             for (int k = 0; k < TILE_WIDTH; ++k) {
                 Pvalue += M_ds[ty][k] * N_ds[k][tx];
-            }
             __syncthreads();
+            }
         }
 
         res_mat[Row * size + Col] = Pvalue;
