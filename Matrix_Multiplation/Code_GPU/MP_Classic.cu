@@ -17,16 +17,15 @@ void time_stats(float micro_seconds) {
 }
 
 __global__ void MatrixMulKernelClassic(float* mat_a, float* mat_b, float* res_mat, int size) {
-    int Row = blockIdx.y * blockDim.y + threadIdx.y;
-    int Col = blockIdx.x * blockDim.x + threadIdx.x;
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if ((Row < size) && (Col < size)) {
+    if ((row < size) && (col < size)) {
         float Pvalue = 0;
 
-        for (int i = 0; i < size; ++i) {
-            Pvalue += mat_a[Row * size + i] * mat_b[i * size + Col];
+        for (int offset = 0; offset < size; offset++) {
+            res_mat[row * size + col] += mat_a[row * size + offset] * mat_b[offset * size + col];
         }
-        res_mat[Row * size + Col] = Pvalue;
     }
 }
 
@@ -36,8 +35,6 @@ int main(void) {
     float *mat_a_host, *mat_b_host, *mat_res_host_gpu;
     float *mat_a_dev, *mat_b_dev, *mat_res_dev;
     dim3 gridDim, blockDim;
-
-    srand(117);
 
     for (int i = 0; i < 5; i++) {
         long nBytes = sizes[i] * sizes[i] * sizeof(float);
@@ -51,8 +48,8 @@ int main(void) {
         cudaMalloc((void**)&mat_res_dev, nBytes);
 
         for (int j = 0; j < sizes[i] * sizes[i]; j++) {
-            mat_a_host[j] = (float) (rand()/(float)(RAND_MAX));
-            mat_b_host[j] = (float) (rand()/(float)(RAND_MAX));
+            mat_a_host[j] = 1;
+            mat_b_host[j] = 1;
         }
 
         cudaMemcpy(mat_a_dev, mat_a_host, nBytes, cudaMemcpyDefault);
@@ -73,7 +70,7 @@ int main(void) {
 
         long check = 0;
         for (int k = 0; k < sizes[i] * sizes[i]; k++) {
-            check += (long) mat_res_host_gpu[i];
+            check += (long)mat_res_host_gpu[i];
         }
 
         printf("Matrix size: %d x %d \n", sizes[i], sizes[i]);

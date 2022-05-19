@@ -50,15 +50,13 @@ __global__ void MatrixMulKernelTiled(float *mat_a, float *mat_b, float *res_mat,
 }
 
 int main(void) {
-    int sizes[3] = {4096, 8192, 16384};
+    int sizes[5] = {1024, 2048, 4096, 8192, 16384};
 
     float *mat_a_host, *mat_b_host, *mat_res_host_gpu;
     float *mat_a_dev, *mat_b_dev, *mat_res_dev;
     dim3 gridDim, blockDim;
 
-    srand(117);
-
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 5; i++) {
         long nBytes = sizes[i] * sizes[i] * sizeof(float);
 
         mat_a_host = (float*)malloc(nBytes);
@@ -70,8 +68,8 @@ int main(void) {
         cudaMalloc((void**)&mat_res_dev, nBytes);
 
         for (int j = 0; j < sizes[i] * sizes[i]; j++) {
-            mat_a_host[j] = (float) (rand()/(float)(RAND_MAX));
-            mat_b_host[j] = (float) (rand()/(float)(RAND_MAX));
+            mat_a_host[j] = 1;
+            mat_b_host[j] = 1;
         }
 
         cudaMemcpy(mat_a_dev, mat_a_host, nBytes, cudaMemcpyDefault);
