@@ -28,13 +28,13 @@ __global__ void MatrixMulKernelTiled(float *mat_a, float *mat_b, float *res_mat,
     int tx = threadIdx.x;
     int ty = threadIdx.y;
 
-    int Row = by * TILE_WIDTH + ty;
-    int Col = bx * TILE_WIDTH + tx;
+    int Row = by * blockDim.y + ty;
+    int Col = bx * blockDim.x + tx;
 
     if ((Row < size) && (Col < size)) {
         float Pvalue = 0;
         for (int m = 0; m <= size / TILE_WIDTH; ++m) {
-            M_ds[ty][tx] = mat_a[Row * size + (m * TILE_WIDTH + tx)];
+            M_ds[ty][tx] = mat_a[Row * size + m * TILE_WIDTH + tx];
             N_ds[ty][tx] = mat_b[(m * TILE_WIDTH + ty) * size + Col];
 
             __syncthreads();
@@ -46,6 +46,7 @@ __global__ void MatrixMulKernelTiled(float *mat_a, float *mat_b, float *res_mat,
         }
 
         res_mat[Row * size + Col] = Pvalue;
+        
     }
 }
 
@@ -92,12 +93,15 @@ int main(void) {
 
         long check = 0;
         for (int k = 0; k < sizes[i] * sizes[i]; k++) {
-            check += (long) mat_res_host_gpu[i];
+            
+            check += (long) mat_res_host_gpu[k];
+            
         }
 
         printf("Matrix size: %d x %d \n", sizes[i], sizes[i]);
         printf("Block size: %d x %d = %d\n", BLOCK_DIM, BLOCK_DIM, BLOCK_DIM * BLOCK_DIM);
         printf("Check: %ld\n", check);
+        
         time_stats(duration_cast<microseconds>(stop - start).count());
 
         free(mat_a_host);
