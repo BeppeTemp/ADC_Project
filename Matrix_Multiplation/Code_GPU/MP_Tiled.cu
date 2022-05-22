@@ -4,16 +4,19 @@
 #include <unistd.h>
 #include <chrono>
 
-#define BLOCK_DIM 8
-#define TILE_WIDTH 8
+#define PRINT_GREEN(str) printf("\x1b[32m%s\x1b[0m", str);
+#define PRINT_RED(str) printf("\x1b[31m%s\x1b[0m", str);
+
+#define BLOCK_DIM 32
+#define TILE_WIDTH 32
 
 using namespace std::chrono;
 
 void time_stats(float micro_seconds) {
     printf("Execution times:\n");
-    printf("    * %.0f μs \n", micro_seconds);
-    printf("    * %.2f ms \n", micro_seconds / 1000);
-    printf("    * %.2f s \n", micro_seconds / 1000 / 1000);
+    printf("    * %.0f μs \n", micro_seconds * 1000);
+    printf("    * %.2f ms \n", micro_seconds);
+    printf("    * %.2f s \n", micro_seconds / 1000);
     printf("\n");
 }
 
@@ -48,7 +51,7 @@ __global__ void MatrixMulKernelTiled(float* mat_a, float* mat_b, float* res_mat,
 }
 
 int main(void) {
-    int sizes[5] = {2048, 2048, 2048, 2048, 2048};
+    int sizes[5] = {1024, 2048, 4096, 8192, 16384};
 
     float *mat_a_host, *mat_b_host, *mat_res_host_gpu;
     float *mat_a_dev, *mat_b_dev, *mat_res_dev;
@@ -79,22 +82,33 @@ int main(void) {
         gridDim.x = sizes[i] / blockDim.x + ((sizes[i] % blockDim.x) == 0 ? 0 : 1);
         gridDim.y = sizes[i] / blockDim.y + ((sizes[i] % blockDim.y) == 0 ? 0 : 1);
 
-        auto start = high_resolution_clock::now();
+        cudaEvent_t start, stop;
+        cudaEventCreate(&start);
+        cudaEventCreate(&stop);
+
+        cudaEventRecord(start);
         MatrixMulKernelTiled<<<gridDim, blockDim>>>(mat_a_dev, mat_b_dev, mat_res_dev, sizes[i]);
-        cudaDeviceSynchronize();
-        auto stop = high_resolution_clock::now();
+        cudaEventRecord(stop);
 
         cudaMemcpy(mat_res_host_gpu, mat_res_dev, nBytes, cudaMemcpyDeviceToHost);
 
-        long check = 0;
+        bool check = true;
         for (int k = 0; k < sizes[i] * sizes[i]; k++) {
-            check += (long)mat_res_host_gpu[i];
+            if (mat_res_host_gpu[i] != sizes[i])
+                check = false;
         }
 
         printf("Matrix size: %d x %d \n", sizes[i], sizes[i]);
         printf("Block size: %d x %d = %d\n", BLOCK_DIM, BLOCK_DIM, BLOCK_DIM * BLOCK_DIM);
-        printf("Check: %ld\n", check);
-        time_stats(duration_cast<microseconds>(stop - start).count());
+        printf("Check: ");
+        if (check) {
+            PRINT_GREEN("Verified\n");
+        } else {
+            PRINT_RED("Error\n");
+        }
+        float elapsed;
+        cudaEventElapsedTime(&elapsed, start, stop);
+        time_stats(elapsed);
 
         free(mat_a_host);
         free(mat_b_host);
