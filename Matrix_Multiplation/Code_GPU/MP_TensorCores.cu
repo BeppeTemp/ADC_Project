@@ -8,6 +8,8 @@
 
 #define WARP_SIZE 32
 #define BLOCK_DIM 16
+
+#define NUM 1.0f
 // MMA matrix tile dimensions.
 #define M 16
 #define N 16
@@ -115,9 +117,12 @@ int main(void) {
         cudaMalloc((void**)&mat_res_dev, nBytes);
 
         for (int j = 0; j < sizes[i] * sizes[i]; j++) {
-            mat_a_host[j] = __float2half(1);
-            mat_b_host[j] = __float2half(1);
+            mat_a_host[j] = __float2half((rand() % 1)+1);
+            mat_b_host[j] = __float2half((rand() % 1)+1);
+           
         }
+        
+        //InitMatrix(mat_a_host,mat_b_host,mat_res_host_gpu);
 
         cudaMemcpy(mat_a_dev, mat_a_host, nBytes, cudaMemcpyDefault);
         cudaMemcpy(mat_b_dev, mat_b_host, nBytes, cudaMemcpyDefault);
@@ -137,12 +142,14 @@ int main(void) {
 
         long check = 0;
         for (int k = 0; k < sizes[i] * sizes[i]; k++) {
+            
             check += (long)mat_res_host_gpu[i];
+            
         }
 
         printf("Matrix size: %d x %d \n", sizes[i], sizes[i]);
         printf("Block size: %d x %d = %d\n", BLOCK_DIM, BLOCK_DIM, BLOCK_DIM * BLOCK_DIM);
-        printf("Check: %ld\n", check);
+       // printf("Check: %ld\n", __half2float(check));
         time_stats(duration_cast<microseconds>(stop - start).count());
 
         free(mat_a_host);
