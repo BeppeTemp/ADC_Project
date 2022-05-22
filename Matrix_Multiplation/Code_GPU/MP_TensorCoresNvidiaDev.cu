@@ -2,8 +2,10 @@
 #include <stdlib.h>
 #include <cuda.h>
 #include <mma.h>
-using namespace nvcuda;
 
+
+//TODO vedi CMAKE
+using namespace nvcuda;
 
 // The only dimensions currently supported by WMMA
 const int WMMA_M = 16;

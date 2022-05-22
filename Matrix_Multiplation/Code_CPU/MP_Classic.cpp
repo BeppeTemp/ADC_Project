@@ -4,6 +4,9 @@
 #include <unistd.h>
 #include <chrono>
 
+#define PRINT_GREEN(str) printf("\x1b[32m%s\x1b[0m", str);
+#define PRINT_RED(str) printf("\x1b[31m%s\x1b[0m", str);
+
 using namespace std;
 using namespace std::chrono;
 
@@ -49,7 +52,12 @@ int main() {
         }
 
         printf("Matrix size: %d x %d \n", sizes[k], sizes[k]);
-        printf("Check: %ld\n", check);
+        printf("Check: ");
+        if (check) {
+            PRINT_GREEN("Verified\n");
+        } else {
+            PRINT_RED("Error\n");
+        }
         time_stats(duration_cast<microseconds>(stop - start).count());
 
         free(mat_a);
