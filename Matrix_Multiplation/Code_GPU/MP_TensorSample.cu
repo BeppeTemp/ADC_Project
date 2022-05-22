@@ -14,9 +14,9 @@
 #define K 16
 
 // GEMM configuration.
-#define M_TILES 256
-#define N_TILES 256
-#define K_TILES 256
+#define M_TILES 512
+#define N_TILES 512
+#define K_TILES 512
 
 #define M_TOTAL (M * M_TILES)
 #define N_TOTAL (N * N_TILES)
@@ -24,7 +24,7 @@
 
 
 //__global__ void WMMAINT8()
-using namespace cuda;
+using namespace nvcuda;
 
 __host__ void InitMatrix(half *A, half *B, float *C)
 {
@@ -38,7 +38,7 @@ __host__ void InitMatrix(half *A, half *B, float *C)
 
 
 
-__global__ void WMMAF16TensorCore(half *A, half *B, float *C, float *D)
+__global__ void WMMAF16TensorCore(half *A, half *B, float *C)
 {
 	int ix = (blockIdx.x * blockDim.x + threadIdx.x)/WARP_SIZE;
 	int iy = (blockIdx.y * blockDim.y + threadIdx.y);
@@ -54,9 +54,9 @@ __global__ void WMMAF16TensorCore(half *A, half *B, float *C, float *D)
 	// AB = A*B
 	int a_col, a_row, b_col, b_row, c_col, c_row;
 	a_row = ix * M;
-	b_row = iy * N;  //b_col=iy*N
+	b_col = iy * N;  //b_col=iy*N
 	for (int k=0; k<K_TOTAL; k+=K) {
-		a_col = b_col = k;  //b_row=k
+		a_col = b_row = k;  //b_row=k
 
 		if (a_row < M_TOTAL && a_col < K_TOTAL && b_row < K_TOTAL && b_col < N_TOTAL) {
 			// Load the inputs
@@ -70,7 +70,7 @@ __global__ void WMMAF16TensorCore(half *A, half *B, float *C, float *D)
 	}
 
 	// D = AB + C
-	c_col = b_row;
+	c_col = b_col;
 	c_row = a_row;
 	if (c_row < M_TOTAL && c_col < N_TOTAL) {
 		wmma::load_matrix_sync(c_frag, C + c_col + c_row * N_TOTAL, N_TOTAL, wmma::mem_row_major);
@@ -84,7 +84,7 @@ __global__ void WMMAF16TensorCore(half *A, half *B, float *C, float *D)
 	}
 }
 
-cudaError_t CalcWMMA(half *A, half *B, float *C, float *D)
+cudaError_t CalcWMMA(half *A, half *B, float *C)
 {
 	cudaError_t cuda_status;
 	dim3 gridDim, blockDim;
@@ -101,7 +101,7 @@ cudaError_t CalcWMMA(half *A, half *B, float *C, float *D)
 	cudaEventCreate(&stop);
 	cudaEventRecord(start);
 
-	WMMAF16TensorCore<<<gridDim, blockDim>>>(A, B, C, D);
+	WMMAF16TensorCore<<<gridDim, blockDim>>>(A, B, C);
 	cuda_status = cudaDeviceSynchronize();
 	
 	cudaEventRecord(stop);
@@ -147,13 +147,13 @@ int main()
 	half *A;
 	half *B;
 	float *C;
-	float *D;
+
 
 	// CUDA Unified Memory 
 	cudaMallocManaged((void **)&A, sizeof(half) * M_TOTAL * K_TOTAL);
 	cudaMallocManaged((void **)&B, sizeof(half) * K_TOTAL * N_TOTAL);
 	cudaMallocManaged((void **)&C, sizeof(float) * M_TOTAL * N_TOTAL);
-	cudaMallocManaged((void **)&D, sizeof(float) * M_TOTAL * N_TOTAL);
+	
 	
 	// Init matrix A B C on host
 	//InitHostMatrix(host_A, host_B, host_C);
@@ -164,9 +164,9 @@ int main()
 	printf("[+]   C: %d x %d\n", M_TOTAL, N_TOTAL);
 	
 	// computing gemm using tensor core
-	printf("[*] Computing D = A * B +C with Tensor Cores...\n");
-	// D = A * B +C, D holds the result after ret
-	cuda_status = CalcWMMA(A, B, C, D);
+	printf("[*] Computing C = A * B  with Tensor Cores...\n");
+	// C = A * B +C, D holds the result after ret
+	cuda_status = CalcWMMA(A, B, C);
 	
 	cuda_status = cudaDeviceReset();
 	if (cuda_status != cudaSuccess) {
@@ -179,7 +179,7 @@ int main()
 	cudaFree(A);
 	cudaFree(B);
 	cudaFree(C);
-	cudaFree(D);
+
 
 	return 0;
 }
