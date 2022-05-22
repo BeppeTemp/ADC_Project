@@ -20,8 +20,6 @@ int main() {
 
     float *mat_a, *mat_b, *mat_res;
 
-    srand(117);
-
     for (int k = 0; k < 5; k++) {
         long nBytes = sizes[k] * sizes[k] * sizeof(float);
 
@@ -30,16 +28,19 @@ int main() {
         mat_res = (float*)malloc(nBytes);
 
         for (int j = 0; j < sizes[k] * sizes[k]; j++) {
-            mat_a[j] = (float)(rand() / (float)(RAND_MAX));
-            mat_b[j] = (float)(rand() / (float)(RAND_MAX));
+            mat_a[j] = 1;
+            mat_b[j] = 1;
         }
 
         auto start = high_resolution_clock::now();
-        for (int i = 0; i < sizes[k]; i++)
-            for (int j = 0; j < sizes[k]; j++)
-                for (int l = 0; l < sizes[k]; l++) {
-                    mat_res[i * sizes[k] + j] += mat_a[i * sizes[k] + l] * mat_b[l * sizes[k] + j];
+        #pragma omp parallel for
+        for (int row = 0; row < sizes[k]; row++) {
+            for (int col = 0; col < sizes[k]; col++) {
+                for (int offset = 0; offset < sizes[k]; offset++) {
+                    mat_res[row * sizes[k] + col] += mat_a[row * sizes[k] + offset] * mat_b[offset * sizes[k] + col];
                 }
+            }
+        }
         auto stop = high_resolution_clock::now();
 
         long check = 0;

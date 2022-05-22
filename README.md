@@ -31,3 +31,4 @@
 | Warp size                           | 32                      |
 
 numero di blocchi massimo 16
+matrix[row][col] = array[row * size + col]

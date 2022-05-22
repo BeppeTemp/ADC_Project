@@ -4,9 +4,8 @@
 #include <unistd.h>
 #include <chrono>
 
-#define BLOCK_DIM 16
-
-#define TILE_WIDTH 16
+#define BLOCK_DIM 8
+#define TILE_WIDTH 8
 
 using namespace std::chrono;
 
@@ -18,48 +17,47 @@ void time_stats(float micro_seconds) {
     printf("\n");
 }
 
-
-__global__ void MatrixMulKernelTiled(float *mat_a, float *mat_b, float *res_mat, int size) {
-    __shared__ float M_ds[TILE_WIDTH][TILE_WIDTH];
-    __shared__ float N_ds[TILE_WIDTH][TILE_WIDTH];
+__global__ void MatrixMulKernelTiled(float* mat_a, float* mat_b, float* res_mat, int size) {
+    __shared__ float m_ds[TILE_WIDTH][TILE_WIDTH];
+    __shared__ float n_ds[TILE_WIDTH][TILE_WIDTH];
 
     int bx = blockIdx.x;
     int by = blockIdx.y;
     int tx = threadIdx.x;
     int ty = threadIdx.y;
 
-    int Row = by * blockDim.y + ty;
-    int Col = bx * blockDim.x + tx;
+    int row = by * TILE_WIDTH + ty;
+    int col = bx * TILE_WIDTH + tx;
 
-    if ((Row < size) && (Col < size)) {
-        float Pvalue = 0;
-        for (int m = 0; m <= size / TILE_WIDTH; ++m) {
-            M_ds[ty][tx] = mat_a[Row * size + m * TILE_WIDTH + tx];
-            N_ds[ty][tx] = mat_b[(m * TILE_WIDTH + ty) * size + Col];
+    float Pvalue = 0;
+
+    for (int m = 0; m <= size / TILE_WIDTH; m++) {
+        m_ds[ty][tx] = mat_a[row * size + (m * TILE_WIDTH + tx)];
+        n_ds[ty][tx] = mat_b[(m * TILE_WIDTH + ty) * size + col];
+
+        __syncthreads();
+
+        for (int k = 0; k < TILE_WIDTH; ++k) {
+            Pvalue += m_ds[ty][k] * n_ds[k][tx];
 
             __syncthreads();
-
-            for (int k = 0; k < TILE_WIDTH; ++k) {
-                Pvalue += M_ds[ty][k] * N_ds[k][tx];
-            __syncthreads();
-            }
         }
 
         res_mat[Row * size + Col] = Pvalue;
         
     }
+
+    res_mat[row * size + col] = Pvalue;
 }
 
 int main(void) {
-    int sizes[3] = {4096, 8192, 16384};
+    int sizes[5] = {2048, 2048, 2048, 2048, 2048};
 
     float *mat_a_host, *mat_b_host, *mat_res_host_gpu;
     float *mat_a_dev, *mat_b_dev, *mat_res_dev;
     dim3 gridDim, blockDim;
 
-    srand(117);
-
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 5; i++) {
         long nBytes = sizes[i] * sizes[i] * sizeof(float);
 
         mat_a_host = (float*)malloc(nBytes);
@@ -71,8 +69,8 @@ int main(void) {
         cudaMalloc((void**)&mat_res_dev, nBytes);
 
         for (int j = 0; j < sizes[i] * sizes[i]; j++) {
-            mat_a_host[j] = (float) (rand()/(float)(RAND_MAX));
-            mat_b_host[j] = (float) (rand()/(float)(RAND_MAX));
+            mat_a_host[j] = 1;
+            mat_b_host[j] = 1;
         }
 
         cudaMemcpy(mat_a_dev, mat_a_host, nBytes, cudaMemcpyDefault);
