@@ -46,7 +46,7 @@ __global__ void MatrixMulKernelTiled(float* mat_a, float* mat_b, float* res_mat,
             __syncthreads();
         }
 
-        res_mat[Row * size + Col] = Pvalue;
+        res_mat[row * size + col] = Pvalue;
         
     }
 

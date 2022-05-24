@@ -7,7 +7,6 @@
 #define PRINT_GREEN(str) printf("\x1b[32m%s\x1b[0m", str);
 #define PRINT_RED(str) printf("\x1b[31m%s\x1b[0m", str);
 
-// TODO compute profiler
 #define BLOCK_DIM 32
 
 using namespace std::chrono;

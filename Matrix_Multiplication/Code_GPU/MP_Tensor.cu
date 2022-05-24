@@ -1,7 +1,7 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include <cuda.h>
 #include <mma.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <chrono>
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
@@ -22,13 +22,8 @@
 #define N_TILES 64
 #define K_TILES 64
 
-
-
-
 //__global__ void WMMAINT8()
 using namespace nvcuda;
-
-using namespace std::chrono;
 
 void time_stats(float micro_seconds) {
     printf("Execution times:\n");
@@ -38,74 +33,59 @@ void time_stats(float micro_seconds) {
     printf("\n");
 }
 
+__global__ void WMMAF16TensorCore(half* A, half* B, float* C, int size) {
+    int ix = (blockIdx.x * blockDim.x + threadIdx.x) / WARP_SIZE;
+    int iy = (blockIdx.y * blockDim.y + threadIdx.y);
 
-__global__ void WMMAF16TensorCore(half *A, half *B, float *C,int size)
-{
-	int ix = (blockIdx.x * blockDim.x + threadIdx.x)/WARP_SIZE;
-	int iy = (blockIdx.y * blockDim.y + threadIdx.y);
-    
-	
-    //Both matrix col_major 
-	 wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> a_frag;
-     wmma::fragment<wmma::matrix_b, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> b_frag;
-     wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> acc_frag;
-     wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> c_frag;
-	
-    
-	 wmma::fill_fragment(acc_frag, 0.0f);
+    // Both matrix col_major
+    wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> a_frag;
+    wmma::fragment<wmma::matrix_b, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> b_frag;
+    wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> acc_frag;
+    wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> c_frag;
 
-	// AB = A*B
-	int a_col, a_row, b_col, b_row, c_col, c_row;
-	a_row = ix * WMMA_M;
-	b_col = iy * WMMA_N;  //b_col=iy*N
-	for (int k=0; k<size; k+=WMMA_K) {
-		a_col = b_row = k;  //b_row=k
+    wmma::fill_fragment(acc_frag, 0.0f);
 
-		if (a_row < size && a_col < size && b_row < size && b_col < size) {
-			// Load the inputs
-			wmma::load_matrix_sync(a_frag, A + a_col + a_row * size, size);
-			wmma::load_matrix_sync(b_frag, B + b_col + b_col * size,size);
-            
+    // AB = A*B
+    int a_col, a_row, b_col, b_row, c_col, c_row;
+    a_row = ix * WMMA_M;
+    b_col = iy * WMMA_N;  // b_col=iy*N
+    for (int k = 0; k < size; k += WMMA_K) {
+        a_col = b_row = k;  // b_row=k
 
-			// Perform the matrix multiplication
-            //ab_frag now holds the result for this warp’s output tile based on the multiplication of A and B.
-			wmma::mma_sync(acc_frag, a_frag, b_frag, acc_frag);
-		}
-	}
+        if (a_row < size && a_col < size && b_row < size && b_col < size) {
+            // Load the inputs
+            wmma::load_matrix_sync(a_frag, A + a_col + a_row * size, size);
+            wmma::load_matrix_sync(b_frag, B + b_col + b_col * size, size);
 
-	// D = AB + C
-	c_col = b_col;
-	c_row = a_row;
-	if (c_row < size && c_col < size) {
-		wmma::load_matrix_sync(c_frag, C + c_col + c_row * size, size, wmma::mem_col_major);
-        
-		for (int i = 0; i < c_frag.num_elements; i++) {
-			c_frag.x[i] = acc_frag.x[i] + c_frag.x[i];
-		}
+            // Perform the matrix multiplication
+            // ab_frag now holds the result for this warp’s output tile based on the multiplication of A and B.
+            wmma::mma_sync(acc_frag, a_frag, b_frag, acc_frag);
+        }
+    }
 
-		// Store the output
-		wmma::store_matrix_sync(C + c_col + c_row * size, c_frag, size, wmma::mem_col_major);
-	}
-}
+    // D = AB + C
+    c_col = b_col;
+    c_row = a_row;
+    if (c_row < size && c_col < size) {
+        wmma::load_matrix_sync(c_frag, C + c_col + c_row * size, size, wmma::mem_col_major);
 
-__global__ void convertFp32ToFp16 (half *out, float *in, int n) {
-   int idx = blockDim.x * blockIdx.x + threadIdx.x;
-   if (idx < n) {
-      out[idx] = in[idx];
-   }
+        for (int i = 0; i < c_frag.num_elements; i++) {
+            c_frag.x[i] = acc_frag.x[i] + c_frag.x[i];
+        }
+
+        // Store the output
+        wmma::store_matrix_sync(C + c_col + c_row * size, c_frag, size, wmma::mem_col_major);
+    }
 }
 
 int main(void) {
     int sizes[5] = {1024, 2048, 4096, 8192, 16384};
 
     half *mat_a_host, *mat_b_host;
-    float *mat_res_host_gpu;
+    float* mat_res_host_gpu;
     half *mat_a_dev, *mat_b_dev;
-    float *mat_res_dev;
+    float* mat_res_dev;
     dim3 gridDim, blockDim;
-
-       float *a_fp32;
-       float *b_fp32;
 
     for (int i = 0; i < 5; i++) {
         long nBytes = sizes[i] * sizes[i] * sizeof(float);
@@ -113,23 +93,15 @@ int main(void) {
         mat_a_host = (half*)malloc(nBytes);
         mat_b_host = (half*)malloc(nBytes);
         mat_res_host_gpu = (float*)malloc(nBytes);
-        a_fp32 = (float*)malloc(nBytes);
-        b_fp32 = (float*)malloc(nBytes);
-
 
         cudaMalloc((void**)&mat_a_dev, nBytes);
         cudaMalloc((void**)&mat_b_dev, nBytes);
         cudaMalloc((void**)&mat_res_dev, nBytes);
 
-       
-
         for (int j = 0; j < sizes[i] * sizes[i]; j++) {
-            a_fp32[j] = 1;
-            b_fp32[j] = 1;
+            mat_a_host[j] = __float2half(1);
+            mat_b_host[j] = __float2half(1);
         }
-
-        convertFp32ToFp16 <<< (sizes[i]*sizes[i] + 255) / 256, 256 >>> (mat_a_dev, a_fp32, sizes[i]*sizes[i]);
-        convertFp32ToFp16 <<< (sizes[i]*sizes[i] + 255) / 256, 256 >>> (mat_b_dev, b_fp32, sizes[i]*sizes[i]);
 
         cudaMemcpy(mat_a_dev, mat_a_host, nBytes, cudaMemcpyDefault);
         cudaMemcpy(mat_b_dev, mat_b_host, nBytes, cudaMemcpyDefault);
