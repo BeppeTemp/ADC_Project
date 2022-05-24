@@ -9,16 +9,15 @@
 #define WARP_SIZE 32
 #define BLOCK_DIM 16
 
-#define NUM 1.0f
 // MMA matrix tile dimensions.
 #define M 16
 #define N 16
 #define K 16
 
 // GEMM configuration.
-#define M_TILES 512
-#define N_TILES 512
-#define K_TILES 512
+#define M_TILES 64
+#define N_TILES 64
+#define K_TILES 64
 
 #define M_TOTAL (M * M_TILES)
 #define N_TOTAL (N * N_TILES)
@@ -73,6 +72,7 @@ __global__ void WMMAF16TensorCore(half *A, half *B, float *C,int size)
 			// Load the inputs
 			wmma::load_matrix_sync(a_frag, A + a_col + a_row * size, size);
 			wmma::load_matrix_sync(b_frag, B + b_col + b_col * size, size);
+            
 
 			// Perform the matrix multiplication
             //ab_frag now holds the result for this warp’s output tile based on the multiplication of A and B.
@@ -85,7 +85,7 @@ __global__ void WMMAF16TensorCore(half *A, half *B, float *C,int size)
 	c_row = a_row;
 	if (c_row < M_TOTAL && c_col < N_TOTAL) {
 		wmma::load_matrix_sync(c_frag, C + c_col + c_row * N_TOTAL, N_TOTAL, wmma::mem_row_major);
-
+        
 		for (int i = 0; i < c_frag.num_elements; i++) {
 			c_frag.x[i] = ab_frag.x[i] + c_frag.x[i];
 		}
