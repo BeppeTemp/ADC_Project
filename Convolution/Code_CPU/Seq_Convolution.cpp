@@ -1,5 +1,6 @@
 #include <cuda.h>
 #include <stdio.h>
+#include <iostream>
 #include <time.h>
 #include <unistd.h>
 #include <chrono>
@@ -10,7 +11,8 @@
 using namespace std;
 using namespace std::chrono;
 
-void time_stats(float micro_seconds) {
+void time_stats(float micro_seconds)
+{
     printf("Execution times:\n");
     printf("    * %.0f μs \n", micro_seconds);
     printf("    * %.2f ms \n", micro_seconds / 1000);
@@ -18,52 +20,42 @@ void time_stats(float micro_seconds) {
     printf("\n");
 }
 
-int main() {
-    int sizes[5] = {1024, 2048, 4096, 8192, 16384};
+int main()
+{
 
-    float *mat_a, *mat_b, *mat_res;
+    long nBytesFilter = 3 * 3 * sizeof(float);
+    long nBytesMatrix = 5 * 5 * sizeof(float);
 
-    for (int k = 0; k < 5; k++) {
-        long nBytes = sizes[k] * sizes[k] * sizeof(float);
+    float mat_a[5][5] = {0.5, 0.5, 0.3, 0.2, 0.1, 0.3, 0.2, 0.8, 0.9, 1.0, 0.7, 0.7, 0.5, 1.0, 1.0, 0.6, 0.6, 0.4, 0.9, 1.0, 0.1, 0.4, 0.6, 0.7, 0.8};
+    float mat_b[3][3] = {0.12, 0.14, 0.22, 0.91, 0.44, 0.31, 0.77, 0.51, 0.13};
 
-        mat_a = (float*)malloc(nBytes);
-        mat_b = (float*)malloc(nBytes);
-        mat_res = (float*)malloc(nBytes);
+    float mat_res[3][3] = {0};
 
-        for (int j = 0; j < sizes[k] * sizes[k]; j++) {
-            mat_a[j] = 1;
-            mat_b[j] = 1;
+    auto start = high_resolution_clock::now();
+    int offsetCol=0;
+    int offsetRow=0;
+    float sum=0.0;
+    #pragma omp parallel for
+    for (int i = 0; i < 3; ++i)
+        for (int j = 0; j < 3; j++)
+        {
+             sum+= mat_a[i][j]*mat_b[i][j];
+            mat_res[i][j]=mat_res[i][j]+sum;
+
         }
+        mat_res[offsetRow][offsetCol]=sum;
+        printf("Mammt annur %f\n",sum);
+        
+    
+    auto stop = high_resolution_clock::now();
 
-        auto start = high_resolution_clock::now();
-        #pragma omp parallel for
-        for (int row = 0; row < sizes[k]; row++) {
-            for (int col = 0; col < sizes[k]; col++) {
-                for (int offset = 0; offset < sizes[k]; offset++) {
-                    mat_res[row * sizes[k] + col] += mat_a[row * sizes[k] + offset] * mat_b[offset * sizes[k] + col];
-                }
-            }
-        }
-        auto stop = high_resolution_clock::now();
+    
 
-        long check = 0;
-        for (int t = 0; t < sizes[k] * sizes[k]; t++) {
-            check += (long)mat_res[t];
-        }
+    time_stats(duration_cast<microseconds>(stop - start).count());
 
-        printf("Matrix size: %d x %d \n", sizes[k], sizes[k]);
-        printf("Check: ");
-        if (check) {
-            PRINT_GREEN("Verified\n");
-        } else {
-            PRINT_RED("Error\n");
-        }
-        time_stats(duration_cast<microseconds>(stop - start).count());
-
-        free(mat_a);
-        free(mat_b);
-        free(mat_res);
-    }
-
-    return 0;
+    free(mat_a);
+    free(mat_b);
+    free(mat_res);
+return 0;
 }
+
