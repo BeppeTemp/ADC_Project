@@ -17,10 +17,6 @@
 #define WMMA_N 16
 #define WMMA_K 16
 
-// GEMM configuration.
-#define M_TILES 64
-#define N_TILES 64
-#define K_TILES 64
 
 //__global__ void WMMAINT8()
 using namespace nvcuda;
