@@ -32,3 +32,6 @@
 
 numero di blocchi massimo 16
 matrix[row][col] = array[row * size + col]
+
+//Convolution reference
+https://ulhpc-tutorials.readthedocs.io/en/latest/cuda/exercises/convolution/
