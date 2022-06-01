@@ -30,21 +30,49 @@ int main()
     float mat_b[3][3] = {0.12, 0.14, 0.22, 0.91, 0.44, 0.31, 0.77, 0.51, 0.13};
 
     float mat_res[3][3] = {0};
+    
+
+    
 
     auto start = high_resolution_clock::now();
     int offsetCol=0;
     int offsetRow=0;
     float sum=0.0;
     #pragma omp parallel for
-    for (int i = 0; i < 3; ++i)
+    for (int i = 0; i < 5; i++)
+	{
+		for (int j = 0; j < 5; j++)
+		{
+			int x = i;
+			int y = j;
+
+			// Kernel rows and columns are k and l respectively
+			for (int k = 0; k < 3; k++)
+			{
+				for (int l = 0; l < 3; l++)
+				{
+					// Convolute here.
+                    
+					sum += mat_b[k][l] * mat_a[x][y];
+					y++; // Move right.
+				}
+				x++; // Move down.
+				y = j; // Restart column position
+			}
+            
+			mat_res[i][j] = sum; // Add result to output matrix.
+			sum = 0.0; // Needed before we move on to the next index.
+		}
+	}
+    for (int i = 0; i < 3; i++)
+    {
         for (int j = 0; j < 3; j++)
         {
-             sum+= mat_a[i][j]*mat_b[i][j];
-            mat_res[i][j]=mat_res[i][j]+sum;
-
+            printf("Elemento in posizione: riga %d e colonna %d è =%f\n",i,j,mat_res[i][j]);
         }
-        mat_res[offsetRow][offsetCol]=sum;
-        printf("Mammt annur %f\n",sum);
+        
+    }
+    
         
     
     auto stop = high_resolution_clock::now();
