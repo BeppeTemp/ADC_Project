@@ -52,7 +52,8 @@ int main()
 				for (int l = 0; l < 3; l++)
 				{
 					// Convolute here.
-                    
+                    //Checks for boundary
+                    if(i>=0&&i<5&&j>=0&&j<5)
 					sum += mat_b[k][l] * mat_a[x][y];
 					y++; // Move right.
 				}
@@ -64,9 +65,9 @@ int main()
 			sum = 0.0; // Needed before we move on to the next index.
 		}
 	}
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < 4; i++)
     {
-        for (int j = 0; j < 3; j++)
+        for (int j = 0; j < 4; j++)
         {
             printf("Elemento in posizione: riga %d e colonna %d è =%f\n",i,j,mat_res[i][j]);
         }
