@@ -49,7 +49,7 @@
         {
             "type": "shell",
             "label": "C++ Compile and Run (OpenMP)",
-            "command": "g++ -O2 -g ${fileDirname}/${fileBasename} -o ${fileBasenameNoExtension}.out -fopenmp && ./${fileBasenameNoExtension}.out && rm ${fileBasenameNoExtension}.out",
+            "command": "g++ -O3 -g ${fileDirname}/${fileBasename} -o ${fileBasenameNoExtension}.out -fopenmp && ./${fileBasenameNoExtension}.out && rm ${fileBasenameNoExtension}.out",
             "presentation": {
                 "reveal": "always"
             },
