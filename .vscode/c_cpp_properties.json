@@ -3,7 +3,8 @@
         {
             "name": "Linux",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/**",
+                "/home/beppetemp/GitHub/cuda-samples/Common"
             ],
             "defines": [
                 "__CUDA_ARCH__=750"

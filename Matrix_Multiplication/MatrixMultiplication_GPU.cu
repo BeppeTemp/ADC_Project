@@ -1,16 +1,13 @@
+#include <assert.h>
 #include <cuda.h>
+#include <mma.h>
 #include <stdio.h>
-#include <time.h>
-#include <unistd.h>
-#include <chrono>
 
 #define PRINT_GREEN(str) printf("\x1b[32m%s\x1b[0m", str);
 #define PRINT_RED(str) printf("\x1b[31m%s\x1b[0m", str);
 
 #define BLOCK_DIM 32
 #define TILE_WIDTH 32
-
-using namespace std::chrono;
 
 void time_stats(float micro_seconds) {
     printf("Execution times:\n");
@@ -21,36 +18,37 @@ void time_stats(float micro_seconds) {
 }
 
 __global__ void MatrixMulKernelTiled(float* mat_a, float* mat_b, float* res_mat, int size) {
-    __shared__ float m_ds[TILE_WIDTH][TILE_WIDTH];
-    __shared__ float n_ds[TILE_WIDTH][TILE_WIDTH];
-
-    int bx = blockIdx.x;
-    int by = blockIdx.y;
     int tx = threadIdx.x;
     int ty = threadIdx.y;
+    int bx = blockIdx.x;
+    int by = blockIdx.y;
 
-    int row = by * TILE_WIDTH + ty;
-    int col = bx * TILE_WIDTH + tx;
+    int mat_a_begin = size * BLOCK_DIM * by;
+    int mat_a_end = mat_a_begin + size - 1;
+    int mat_b_begin = BLOCK_DIM * bx;
 
-    float Pvalue = 0;
+    int mat_b_step = BLOCK_DIM * size;
 
-    for (int m = 0; m <= size / TILE_WIDTH; m++) {
-        m_ds[ty][tx] = mat_a[row * size + (m * TILE_WIDTH + tx)];
-        n_ds[ty][tx] = mat_b[(m * TILE_WIDTH + ty) * size + col];
+    float temp = 0;
+    for (int a = mat_a_begin, b = mat_b_begin; a <= mat_a_end; a += BLOCK_DIM, b += mat_b_step) {
+        __shared__ float m_a_sh[BLOCK_DIM][BLOCK_DIM];
+        __shared__ float m_b_sh[BLOCK_DIM][BLOCK_DIM];
+
+        m_a_sh[ty][tx] = mat_a[a + size * ty + tx];
+        m_b_sh[ty][tx] = mat_b[b + size * ty + tx];
 
         __syncthreads();
 
-        for (int k = 0; k < TILE_WIDTH; ++k) {
-            Pvalue += m_ds[ty][k] * n_ds[k][tx];
-
-            __syncthreads();
+        #pragma unroll
+        for (int k = 0; k < BLOCK_DIM; ++k) {
+            temp += m_a_sh[ty][k] * m_b_sh[k][tx];
         }
 
-        res_mat[row * size + col] = Pvalue;
-        
+        __syncthreads();
     }
 
-    res_mat[row * size + col] = Pvalue;
+    int c = size * BLOCK_DIM * by + BLOCK_DIM * bx;
+    res_mat[c + size * ty + tx] = temp;
 }
 
 int main(void) {
@@ -101,16 +99,18 @@ int main(void) {
                 check = false;
         }
 
+        float elapsed;
+        cudaEventElapsedTime(&elapsed, start, stop);
+
         printf("Matrix size: %d x %d \n", sizes[i], sizes[i]);
         printf("Block size: %d x %d = %d\n", BLOCK_DIM, BLOCK_DIM, BLOCK_DIM * BLOCK_DIM);
+        printf("TFLOPS: %.2f\n", static_cast<double>((static_cast<double>(sizes[i]) * sizes[i] * sizes[i] * 2) / (elapsed / 1000.)) / 1e12);
         printf("Check: ");
         if (check) {
             PRINT_GREEN("Verified\n");
         } else {
             PRINT_RED("Error\n");
         }
-        float elapsed;
-        cudaEventElapsedTime(&elapsed, start, stop);
         time_stats(elapsed);
 
         free(mat_a_host);

@@ -10,6 +10,7 @@
 #define BLOCK_DIM 32
 #define TILE_WIDTH 32
 
+using namespace std;
 using namespace std::chrono;
 
 void time_stats(float micro_seconds) {
@@ -17,6 +18,22 @@ void time_stats(float micro_seconds) {
     printf("    * %.0f μs \n", micro_seconds * 1000);
     printf("    * %.2f ms \n", micro_seconds);
     printf("    * %.2f s \n", micro_seconds / 1000);
+    printf("\n");
+}
+
+void printMat(float* mat, int size) {
+    // Print the entire matrix
+    printf("\n");
+    for (int i = 0; i < (size * size); i++) {
+        printf("|");
+        printf("%05.2f", mat[i]);
+        if (((i + 1) % (size) == 0) && (i != 0))
+            printf("|\n");
+        if ((size * size) == 1)
+            printf("|\n");
+        if (size == 1 && ((i == 0)))
+            printf("|\n");
+    }
     printf("\n");
 }
 
@@ -28,21 +45,26 @@ __global__ void ConvolutionKernel(float* mat_start, float* mat_res, const float*
     int row_o = blockIdx.y * TILE_WIDTH + ty;
     int col_o = blockIdx.x * TILE_WIDTH + tx;
 
-    // Corrdinate start
-    int row_i = row_o - MASK_SIZE / 2;
-    int col_i = col_o - MASK_SIZE / 2;
+    // Coordinate start
+    int row_i = row_o - MASK_CENTER;
+    int col_i = col_o - MASK_CENTER;
 
-    __shared__ float N_ds[TILE_WIDTH + MASK_SIZE - 1][TILE_WIDTH + MASK_SIZE - 1];
+    // Tile in shared memory
+    __shared__ float n_ds[TILE_WIDTH + MASK_SIZE * MASK_SIZE - 1][TILE_WIDTH + MASK_SIZE * MASK_SIZE - 1];
 
+    // Tile cooperative upload
     if ((row_i >= 0) && (row_i < size) && (col_i >= 0) && (col_i < size)) {
-        N_ds[ty][tx] = data[row_i * size + col_i];
+        n_ds[ty][tx] = mat_start[(row_i * size) + col_i];
     }
 
+     __syncthreads();
+
+    // Convolution calculation
     float output = 0.0f;
     if (ty < TILE_WIDTH && tx < TILE_WIDTH) {
         for (int i = 0; i < MASK_SIZE; i++) {
             for (int j = 0; j < MASK_SIZE; j++) {
-                output += Mask[i][j] * N_ds[i + ty][j + tx];
+                output += Mask[(i * MASK_SIZE) + j] * n_ds[i + ty][j + tx];
             }
         }
         if (row_o < size && col_o < size) {
@@ -82,20 +104,22 @@ int main() {
         cudaMemcpy(mat_res_dev, mat_res_host, sizes[k] * sizes[k] * sizeof(float), cudaMemcpyDefault);
         cudaMemset(mat_res_dev, 0, sizes[k] * sizes[k] * sizeof(float));
 
-        // blockDim.x = BLOCK_DIM;
-        // blockDim.y = BLOCK_DIM;
-        // gridDim.x = sizes[i] / blockDim.x + ((sizes[i] % blockDim.x) == 0 ? 0 : 1);
-        // gridDim.y = sizes[i] / blockDim.y + ((sizes[i] % blockDim.y) == 0 ? 0 : 1);
+        blockDim.x = BLOCK_DIM;
+        blockDim.y = BLOCK_DIM;
+        gridDim.x = sizes[k] / blockDim.x + ((sizes[k] % blockDim.x) == 0 ? 0 : 1);
+        gridDim.y = sizes[k] / blockDim.y + ((sizes[k] % blockDim.y) == 0 ? 0 : 1);
 
         cudaEvent_t start, stop;
         cudaEventCreate(&start);
         cudaEventCreate(&stop);
 
         cudaEventRecord(start);
-        // ConvolutionKernel<<<gridDim, blockDim>>>();
+        ConvolutionKernel<<<gridDim, blockDim>>>(mat_start_dev, mat_res_dev, mask_dev, sizes[k]);
         cudaEventRecord(stop);
 
         cudaMemcpy(mat_res_host, mat_res_dev, sizes[k] * sizes[k] * sizeof(float), cudaMemcpyDeviceToHost);
+
+        // printMat(mat_res_host, sizes[k]);
 
         printf("Matrix size: %d x %d \n", sizes[k], sizes[k]);
         printf("Block size: %d x %d = %d\n", BLOCK_DIM, BLOCK_DIM, BLOCK_DIM * BLOCK_DIM);
@@ -109,7 +133,8 @@ int main() {
         cudaFree(mat_start_dev);
         cudaFree(mat_res_dev);
     }
-
-    free(mat_res_host);
+    free(mask_host);
+    cudaFree(mask_dev);
+    
     return 0;
 }

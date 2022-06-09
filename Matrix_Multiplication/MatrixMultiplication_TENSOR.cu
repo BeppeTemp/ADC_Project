@@ -1,10 +1,7 @@
+#include <assert.h>
 #include <cuda.h>
 #include <mma.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <chrono>
-#include "cuda_runtime.h"
-#include "device_launch_parameters.h"
 
 #define WARP_SIZE 32
 #define BLOCK_DIM 16
@@ -17,8 +14,6 @@
 #define WMMA_N 16
 #define WMMA_K 16
 
-
-//__global__ void WMMAINT8()
 using namespace nvcuda;
 
 void time_stats(float micro_seconds) {
@@ -29,48 +24,51 @@ void time_stats(float micro_seconds) {
     printf("\n");
 }
 
-__global__ void WMMAF16TensorCore(half* A, half* B, float* C, int size) {
-    int ix = (blockIdx.x * blockDim.x + threadIdx.x) / WARP_SIZE;
-    int iy = (blockIdx.y * blockDim.y + threadIdx.y);
+__global__ void WMMAF16TensorCore(half* mat_a, half* mat_b, float* mat_c, int size) {
+    // Tile using a 2D grid
+    int warpM = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
+    int warpN = (blockIdx.y * blockDim.y + threadIdx.y);
 
-    // Both matrix col_major
-    wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> a_frag;
+    // Declare the fragments
+    wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::row_major> a_frag;
     wmma::fragment<wmma::matrix_b, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> b_frag;
     wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> acc_frag;
     wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> c_frag;
 
     wmma::fill_fragment(acc_frag, 0.0f);
 
-    // AB = A*B
-    int a_col, a_row, b_col, b_row, c_col, c_row;
-    a_row = ix * WMMA_M;
-    b_col = iy * WMMA_N;  // b_col=iy*N
-    for (int k = 0; k < size; k += WMMA_K) {
-        a_col = b_row = k;  // b_row=k
+    // Loop over k
+    for (int i = 0; i < size; i += WMMA_K) {
+        int aCol = i;
+        int aRow = warpM * WMMA_M;
+        int bCol = warpN * WMMA_N;
+        int bRow = i;
 
-        if (a_row < size && a_col < size && b_row < size && b_col < size) {
+        // Bounds checking
+        if (aRow < size && aCol < size && bRow < size && bCol < size) {
             // Load the inputs
-            wmma::load_matrix_sync(a_frag, A + a_col + a_row * size, size);
-            wmma::load_matrix_sync(b_frag, B + b_col + b_col * size, size);
+            wmma::load_matrix_sync(a_frag, mat_a + aCol + aRow * size, size);
+            wmma::load_matrix_sync(b_frag, mat_b + bRow + bCol * size, size);
 
             // Perform the matrix multiplication
-            // ab_frag now holds the result for this warp’s output tile based on the multiplication of A and B.
             wmma::mma_sync(acc_frag, a_frag, b_frag, acc_frag);
         }
     }
 
-    // D = AB + C
-    c_col = b_col;
-    c_row = a_row;
-    if (c_row < size && c_col < size) {
-        wmma::load_matrix_sync(c_frag, C + c_col + c_row * size, size, wmma::mem_col_major);
+    // Load in the current value of c, scale it by beta, and add this our result
+    // scaled by alpha
+    int cCol = warpN * WMMA_N;
+    int cRow = warpM * WMMA_M;
+
+    if (cRow < size && cCol < size) {
+        wmma::load_matrix_sync(c_frag, mat_c + cCol + cRow * size, size, wmma::mem_row_major);
 
         for (int i = 0; i < c_frag.num_elements; i++) {
             c_frag.x[i] = acc_frag.x[i] + c_frag.x[i];
         }
 
         // Store the output
-        wmma::store_matrix_sync(C + c_col + c_row * size, c_frag, size, wmma::mem_col_major);
+        wmma::store_matrix_sync(mat_c + cCol + cRow * size, c_frag, size, wmma::mem_row_major);
     }
 }
 
@@ -135,6 +133,7 @@ int main(void) {
         float elapsed;
         cudaEventElapsedTime(&elapsed, start, stop);
         time_stats(elapsed);
+        printf("TFLOPS: %.2f\n", static_cast<double>((static_cast<double>(sizes[i]) * sizes[i] * sizes[i] * 2) / (elapsed / 1000.)) / 1e12);
 
         free(mat_a_host);
         free(mat_b_host);
