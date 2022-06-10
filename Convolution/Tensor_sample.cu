@@ -51,6 +51,8 @@ __global__ void ConvolutionKernelTensor(half* mat_a, half* mat_b, float* mat_c, 
     // Initialize the output to zero
     wmma::fill_fragment(c_frag, 0.0f);
 
+    
+
     // Load the inputs
     wmma::load_matrix_sync(a_frag, mat_a, 16);
     wmma::load_matrix_sync(b_frag, mat_b, 16);
@@ -63,7 +65,7 @@ __global__ void ConvolutionKernelTensor(half* mat_a, half* mat_b, float* mat_c, 
 }
 
 int main(void) {
-    int sizes[1] = {4};
+    int sizes[1] = {16};
 
     half *mat_start_host, *mask_host;
     half *mat_start_dev, *mask_dev;
@@ -71,34 +73,46 @@ int main(void) {
     float* mat_res_dev;
 
     // Mask init and upload
-    mask_host = (half*)malloc(MASK_SIZE * MASK_SIZE * sizeof(half));
-    for (int i = 0; i < MASK_SIZE * MASK_SIZE; i++) {
+    mask_host = (half*)malloc(256 * sizeof(half));
+    for (int i = 0; i < 16; i++) {
         mask_host[i] = __float2half(1);
     }
-    cudaMalloc((void**)&mask_dev, MASK_SIZE * MASK_SIZE * sizeof(half));
-    cudaMemcpy(mask_dev, mask_host, MASK_SIZE * MASK_SIZE * sizeof(half), cudaMemcpyDefault);
+  
+    for (int i = 16; i<256; i++)
+    {
+        
+        mask_host[i]=__float2half(0);
+        
+    }
+   
+    
+    
+    cudaMalloc((void**)&mask_dev, 256 * sizeof(half));
+    cudaMemcpy(mask_dev, mask_host, 256 * sizeof(half), cudaMemcpyDefault);
 
     dim3 gridDim, blockDim;
 
     for (int k = 0; k < 1; k++) {
-        mat_start_host = (half*)malloc(sizes[k] * sizes[k] * sizeof(half));
-        mat_res_host = (float*)calloc(sizes[k] * sizes[k], sizeof(float));
+        mat_start_host = (half*)malloc(sizes[k] *sizes[k]* sizeof(half));
+        mat_res_host = (float*)calloc(sizes[k]*sizes[k], sizeof(float));
 
-        for (int i = 0; i < sizes[k] * sizes[k]; i++) {
-            mat_start_host[i] = __float2half(1);
+        for (int i = 0; i < sizes[k]*sizes[k]; i++) {
+            mat_start_host[i] = __float2half(2);
         }
 
-        cudaMalloc((void**)&mat_start_dev, sizes[k] * sizes[k] * sizeof(half));
-        cudaMalloc((void**)&mat_res_dev, sizes[k] * sizes[k] * sizeof(float));
+        cudaMalloc((void**)&mat_start_dev, sizes[k] *sizes[k]* sizeof(half));
+        cudaMalloc((void**)&mat_res_dev, sizes[k]*sizes[k]* sizeof(float));
 
-        cudaMemcpy(mat_start_dev, mat_start_host, sizes[k] * sizes[k] * sizeof(half), cudaMemcpyDefault);
-        cudaMemcpy(mat_res_dev, mat_res_host, sizes[k] * sizes[k] * sizeof(half), cudaMemcpyDefault);
-        cudaMemset(mat_res_dev, 0, sizes[k] * sizes[k] * sizeof(half));
+        cudaMemcpy(mat_start_dev, mat_start_host, sizes[k]*sizes[k] * sizeof(half), cudaMemcpyDefault);
+        cudaMemcpy(mat_res_dev, mat_res_host, sizes[k]*sizes[k] * sizeof(half), cudaMemcpyDefault);
+        cudaMemset(mat_res_dev, 0, sizes[k]*sizes[k] * sizeof(half));
 
         blockDim.x = BLOCK_DIM;
         blockDim.y = BLOCK_DIM;
         gridDim.x = sizes[k] / blockDim.x + ((sizes[k] % blockDim.x) == 0 ? 0 : 1);
         gridDim.y = sizes[k] / blockDim.y + ((sizes[k] % blockDim.y) == 0 ? 0 : 1);
+
+        
 
         printf("Griglia: %d, %d\n", gridDim.x, gridDim.y);
         printf("Blocco: %d, %d\n", blockDim.x, blockDim.y);
@@ -111,7 +125,7 @@ int main(void) {
         ConvolutionKernelTensor<<<gridDim, blockDim>>>(mat_start_dev, mask_dev, mat_res_dev, sizes[k]);
         cudaEventRecord(stop);
 
-        cudaMemcpy(mat_res_host, mat_res_dev, sizes[k] * sizes[k] * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(mat_res_host, mat_res_dev, sizes[k]*sizes[k]* sizeof(float), cudaMemcpyDeviceToHost);
 
         printMat(mat_res_host, sizes[k]);
 

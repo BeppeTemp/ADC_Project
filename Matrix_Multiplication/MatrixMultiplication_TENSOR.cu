@@ -24,13 +24,30 @@ void time_stats(float micro_seconds) {
     printf("\n");
 }
 
+void printMat(float* mat, int size) {
+    // Print the entire matrix
+    printf("\n");
+    for (int i = 0; i < (size * size); i++) {
+        printf("|");
+        printf("%05.2f", mat[i]);
+        if (((i + 1) % (size) == 0) && (i != 0))
+            printf("|\n");
+        if ((size * size) == 1)
+            printf("|\n");
+        if (size == 1 && ((i == 0)))
+            printf("|\n");
+    }
+    printf("\n");
+}
+
+
 __global__ void WMMAF16TensorCore(half* mat_a, half* mat_b, float* mat_c, int size) {
     // Tile using a 2D grid
     int warpM = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
     int warpN = (blockIdx.y * blockDim.y + threadIdx.y);
 
     // Declare the fragments
-    wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::row_major> a_frag;
+    wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> a_frag;
     wmma::fragment<wmma::matrix_b, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> b_frag;
     wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> acc_frag;
     wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> c_frag;
@@ -73,7 +90,7 @@ __global__ void WMMAF16TensorCore(half* mat_a, half* mat_b, float* mat_c, int si
 }
 
 int main(void) {
-    int sizes[5] = {1024, 2048, 4096, 8192, 16384};
+    int sizes[1] = {1024};
 
     half *mat_a_host, *mat_b_host;
     float* mat_res_host_gpu;
@@ -124,12 +141,16 @@ int main(void) {
 
         printf("Matrix size: %d x %d \n", sizes[i], sizes[i]);
         printf("Block size: %d x %d = %d\n", BLOCK_DIM, BLOCK_DIM, BLOCK_DIM * BLOCK_DIM);
+       
+        
         printf("Check: ");
         if (check) {
             PRINT_GREEN("Verified\n");
         } else {
             PRINT_RED("Error\n");
         }
+
+         printMat(mat_res_host_gpu, sizes[i]);
         float elapsed;
         cudaEventElapsedTime(&elapsed, start, stop);
         time_stats(elapsed);
