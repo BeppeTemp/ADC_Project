@@ -123,6 +123,7 @@ int main() {
 
         printf("Matrix size: %d x %d \n", sizes[k], sizes[k]);
         printf("Block size: %d x %d = %d\n", BLOCK_DIM, BLOCK_DIM, BLOCK_DIM * BLOCK_DIM);
+        
         float elapsed;
         cudaEventElapsedTime(&elapsed, start, stop);
         time_stats(elapsed);

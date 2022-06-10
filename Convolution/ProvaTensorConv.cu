@@ -91,7 +91,7 @@ int main(void) {
 
     for (int k = 0; k < 1; k++) {
         mat_start_host = (half*)malloc(sizes[k] *sizes[k]* sizeof(half));
-        mat_res_host = (float*)calloc(sizes[k]*sizes[k], sizeof(float));
+        mat_res_host = (float*)calloc(sizes[k]*4, sizeof(float));
 
         for (int i = 0; i < sizes[k]*sizes[k]; i++) {
             mat_start_host[i] = __float2half(2);
