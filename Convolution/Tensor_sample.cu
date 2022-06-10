@@ -45,13 +45,12 @@ void printMat(float* mat, int size) {
 __global__ void ConvolutionKernelTensor(half* mat_a, half* mat_b, float* mat_c, int size) {
     // Declare the fragments
     wmma::fragment<wmma::matrix_a, 16, 16, 16, half, wmma::col_major> a_frag;
-    wmma::fragment<wmma::matrix_b, 16, 16, 16, half, wmma::row_major> b_frag;
+    wmma::fragment<wmma::matrix_b, 16, 16, 16, half, wmma::col_major> b_frag;
     wmma::fragment<wmma::accumulator, 16, 16, 16, float> c_frag;
 
     // Initialize the output to zero
     wmma::fill_fragment(c_frag, 0.0f);
 
-    
 
     // Load the inputs
     wmma::load_matrix_sync(a_frag, mat_a, 16);
