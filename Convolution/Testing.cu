@@ -6,7 +6,7 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
-#define SIZE 32
+#define SIZE 16
 
 #define MASK_SIZE 5
 #define MASK_CENTER 2
@@ -57,7 +57,7 @@ __global__ void ConvolutionKernelTensor(half* mat_a, half* mat_b, float* mat_c, 
      */
 
     // Declare the fragments
-    wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::row_major> a_frag;
+    wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> a_frag;
     wmma::fragment<wmma::matrix_b, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> b_frag;
     wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> acc_frag;
 
@@ -108,10 +108,18 @@ int main(void) {
     cudaMalloc((void**)&mat_res_dev, nBytes);
 
     for (int j = 0; j < SIZE * SIZE; j++) {
-        mat_a_host[j] = __float2half(1);
-        mat_b_host[j] = __float2half(1);
+        mat_a_host[j] = __float2half(2);
+        //mat_b_host[j] = __float2half(1);
     }
-  
+    for (int i = 0; i < SIZE*SIZE; i++) {
+        //mat_a_host[j] = __float2half(1);
+        if(i<16){
+            mat_b_host[i] = __float2half(1);
+        }
+        else{
+        mat_b_host[i] = __float2half(0);
+        }
+    }
 
     cudaMemcpy(mat_a_dev, mat_a_host, nBytes, cudaMemcpyDefault);
     cudaMemcpy(mat_b_dev, mat_b_host, nBytes, cudaMemcpyDefault);
