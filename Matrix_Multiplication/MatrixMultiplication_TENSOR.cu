@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 #define WARP_SIZE 32
-#define BLOCK_DIM 16
+#define BLOCK_DIM 32
 
 #define PRINT_GREEN(str) printf("\x1b[32m%s\x1b[0m", str);
 #define PRINT_RED(str) printf("\x1b[31m%s\x1b[0m", str);
@@ -45,6 +45,9 @@ __global__ void WMMAF16TensorCore(half* mat_a, half* mat_b, float* mat_c, int si
     // Tile using a 2D grid
     int warpM = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
     int warpN = (blockIdx.y * blockDim.y + threadIdx.y);
+
+    printf("Block_Thread: [%d,%d], Coord_Thread: [%d,%d], Warp M/N: [%d,%d]\n", blockIdx.x, blockIdx.y, threadIdx.x, threadIdx.y, warpM, warpN);
+
 
     // Declare the fragments
     wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> a_frag;
@@ -90,7 +93,7 @@ __global__ void WMMAF16TensorCore(half* mat_a, half* mat_b, float* mat_c, int si
 }
 
 int main(void) {
-    int sizes[1] = {1024};
+    int sizes[1] = {32};
 
     half *mat_a_host, *mat_b_host;
     float* mat_res_host_gpu;
@@ -98,7 +101,7 @@ int main(void) {
     float* mat_res_dev;
     dim3 gridDim, blockDim;
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 1; i++) {
         long nBytes = sizes[i] * sizes[i] * sizeof(float);
 
         mat_a_host = (half*)malloc(nBytes);
