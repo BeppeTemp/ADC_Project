@@ -40,60 +40,54 @@ void printMat(float* mat, int size) {
     printf("\n");
 }
 
-
 __global__ void WMMAF16TensorCore(half* mat_a, half* mat_b, float* mat_c, int size) {
+    // int row = blockIdx.y * blockDim.y + threadIdx.y;
+    // int col = blockIdx.x * blockDim.x + threadIdx.x;
+
     // Tile using a 2D grid
-    int warpM = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
-    int warpN = (blockIdx.y * blockDim.y + threadIdx.y);
+    int tile_row = (blockIdx.x * blockDim.x + threadIdx.x) / WARP_SIZE;
+    int tile_col = (blockIdx.y * blockDim.y + threadIdx.y);
 
-    printf("Block_Thread: [%d,%d], Coord_Thread: [%d,%d], Warp M/N: [%d,%d]\n", blockIdx.x, blockIdx.y, threadIdx.x, threadIdx.y, warpM, warpN);
-
+    // if (threadIdx.x < SIZE * SIZE / blockDim.y)
+    /*printf("Block_Dim: [%d,%d], Block_Thread: [%d,%d], Coord_Thread: [%d,%d], Tile M/N: [%d,%d]\n", blockDim.x, blockDim.y, blockIdx.x, blockIdx.y, threadIdx.x, threadIdx.y, tile_row, tile_col);
+     */
 
     // Declare the fragments
-    wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> a_frag;
+    wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::row_major> a_frag;
     wmma::fragment<wmma::matrix_b, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> b_frag;
     wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> acc_frag;
-    wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> c_frag;
 
     wmma::fill_fragment(acc_frag, 0.0f);
 
-    // Loop over k
+    // Parte da 0 e sale di 16 alla volta
     for (int i = 0; i < size; i += WMMA_K) {
-        int aCol = i;
-        int aRow = warpM * WMMA_M;
-        int bCol = warpN * WMMA_N;
-        int bRow = i;
+        int aCol = i;  // 0
+        int aRow = tile_row * WMMA_M;
+
+        int bCol = tile_col * WMMA_N;
+        int bRow = i;  // 0
 
         // Bounds checking
         if (aRow < size && aCol < size && bRow < size && bCol < size) {
+            // printf("Block_Thread: [%d,%d], Coord_Thread: [%d,%d], A[%d,%d], B[%d,%d], ID: %ld, IDM: %ld, I:%d\n", blockIdx.x, blockIdx.y, threadIdx.x, threadIdx.y, aRow, aCol, bRow, bCol, mat_a, i);
             // Load the inputs
-            wmma::load_matrix_sync(a_frag, mat_a + aCol + aRow * size, size);
-            wmma::load_matrix_sync(b_frag, mat_b + bRow + bCol * size, size);
+            wmma::load_matrix_sync(a_frag, mat_a + (aRow * size) + aCol, size);  // mat_a[aRow, aCol]
+            wmma::load_matrix_sync(b_frag, mat_b + (bRow * size) + bCol, size);  // mat_b[bRow, bCol]
 
             // Perform the matrix multiplication
             wmma::mma_sync(acc_frag, a_frag, b_frag, acc_frag);
         }
     }
 
-    // Load in the current value of c, scale it by beta, and add this our result
-    // scaled by alpha
-    int cCol = warpN * WMMA_N;
-    int cRow = warpM * WMMA_M;
+    int cCol = tile_row * WMMA_N;
+    int cRow = tile_col * WMMA_M;
 
-    if (cRow < size && cCol < size) {
-        wmma::load_matrix_sync(c_frag, mat_c + cCol + cRow * size, size, wmma::mem_row_major);
-
-        for (int i = 0; i < c_frag.num_elements; i++) {
-            c_frag.x[i] = acc_frag.x[i] + c_frag.x[i];
-        }
-
-        // Store the output
-        wmma::store_matrix_sync(mat_c + cCol + cRow * size, c_frag, size, wmma::mem_row_major);
-    }
+    // Store the output
+    wmma::store_matrix_sync(mat_c + (cRow * size) + cCol, acc_frag, size, wmma::mem_row_major);  // mat_c[cRow, cCol]
 }
 
 int main(void) {
-    int sizes[1] = {32};
+    int sizes[5] = {1024, 2048, 4096, 8192, 16384};
 
     half *mat_a_host, *mat_b_host;
     float* mat_res_host_gpu;
@@ -101,7 +95,7 @@ int main(void) {
     float* mat_res_dev;
     dim3 gridDim, blockDim;
 
-    for (int i = 0; i < 1; i++) {
+    for (int i = 0; i < 5; i++) {
         long nBytes = sizes[i] * sizes[i] * sizeof(float);
 
         mat_a_host = (half*)malloc(nBytes);
@@ -137,6 +131,7 @@ int main(void) {
         cudaMemcpy(mat_res_host_gpu, mat_res_dev, nBytes, cudaMemcpyDeviceToHost);
 
         bool check = true;
+#pragma omp parallel for
         for (int k = 0; k < sizes[i] * sizes[i]; k++) {
             if (mat_res_host_gpu[i] != sizes[i])
                 check = false;
@@ -144,8 +139,7 @@ int main(void) {
 
         printf("Matrix size: %d x %d \n", sizes[i], sizes[i]);
         printf("Block size: %d x %d = %d\n", BLOCK_DIM, BLOCK_DIM, BLOCK_DIM * BLOCK_DIM);
-       
-        
+
         printf("Check: ");
         if (check) {
             PRINT_GREEN("Verified\n");
@@ -153,7 +147,7 @@ int main(void) {
             PRINT_RED("Error\n");
         }
 
-         printMat(mat_res_host_gpu, sizes[i]);
+        //  printMat(mat_res_host_gpu, sizes[i]);
         float elapsed;
         cudaEventElapsedTime(&elapsed, start, stop);
         time_stats(elapsed);

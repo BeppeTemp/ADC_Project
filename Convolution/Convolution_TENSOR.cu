@@ -6,7 +6,7 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
-#define SIZE 128
+#define SIZE 32
 
 #define MASK_SIZE 5
 #define MASK_CENTER 2
@@ -54,12 +54,12 @@ __global__ void ConvolutionKernelTensor(half* mat_a, half* mat_b, float* mat_c, 
 
     // if (threadIdx.x < SIZE * SIZE / blockDim.y)
     /*printf("Block_Dim: [%d,%d], Block_Thread: [%d,%d], Coord_Thread: [%d,%d], Tile M/N: [%d,%d]\n", blockDim.x, blockDim.y, blockIdx.x, blockIdx.y, threadIdx.x, threadIdx.y, tile_row, tile_col);
-*/
+     */
+
     // Declare the fragments
-    wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> a_frag;
+    wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::row_major> a_frag;
     wmma::fragment<wmma::matrix_b, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> b_frag;
     wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> acc_frag;
-    wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> c_frag;
 
     wmma::fill_fragment(acc_frag, 0.0f);
 
@@ -116,8 +116,9 @@ int main(void) {
     cudaMemcpy(mat_b_dev, mat_b_host, nBytes, cudaMemcpyDefault);
     cudaMemset(mat_res_dev, 0, nBytes);
 
-    // Abbiamo dei blocchi da 16 warp che computano tile di dimensioni 64 * 64
-    // crediamo che ogni warp abbia solo 1 tensor che computa una 4*4
+    // Abbiamo dei blocchi da 16 warp che computano ognuno tile di dimensioni 64 * 64
+    // crediamo che ogni warp abbia solo 1 tensor che computa una 4*4*4, quindi
+    // 16 warp * 4 * 4 * 4
     // supponendo che warp = SM ogni SM ha un Tensor
 
     blockDim.x = 128;
