@@ -6,7 +6,7 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
-#define SIZE 32
+#define SIZE 16
 
 #define MASK_SIZE 5
 #define MASK_CENTER 2

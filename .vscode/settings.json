@@ -9,4 +9,5 @@
         "nsys",
         "nvtop"
     ],
+    "python.formatting.provider": "black",
 }
