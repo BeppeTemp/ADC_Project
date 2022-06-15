@@ -3,7 +3,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#define ARRAY_SIZE 16
+#define ARRAY_SIZE 4
 #define MASK_SIZE 5
 
 #define PADDED_ARRAY_SIZE (ARRAY_SIZE + ((MASK_SIZE / 2) * 2))
@@ -11,14 +11,10 @@
 #define UNF_ARRAY_M ((PADDED_ARRAY_SIZE - MASK_SIZE + 1) * (PADDED_ARRAY_SIZE - MASK_SIZE + 1))
 #define UNF_ARRAY_N (MASK_SIZE * MASK_SIZE)
 
-// #define STEP_X (ARRAY_SIZE - MASK_SIZE)
-// #define STEP_Y (ARRAY_SIZE - MASK_SIZE)
+#define STEP_X (PADDED_ARRAY_SIZE - MASK_SIZE)
+#define STEP_Y (PADDED_ARRAY_SIZE - MASK_SIZE)
 
-#define STEP_X 11
-#define STEP_Y 11
-
-// AS: 8 SX/SY: 3
-// AS: 8 SX/SY: 3
+// Unfolded Matrix o Variante Toeplix Matrix
 
 using namespace std;
 
@@ -72,7 +68,7 @@ int main() {
 
     float* mask = (float*)calloc(UNF_ARRAY_N * UNF_ARRAY_M, sizeof(float));
 
-    for (int i = 0; i < UNF_ARRAY_N * UNF_ARRAY_M; i++)
+    for (int i = 0; i < UNF_ARRAY_N; i++)
             mask[i * UNF_ARRAY_M] = 1;
 
     printf("Maschera in column major con padding:\n");
@@ -96,17 +92,14 @@ int main() {
     printMat(mat_unfolded, UNF_ARRAY_M, UNF_ARRAY_N);
 
     float* mat_res_col = (float*)malloc(UNF_ARRAY_M * sizeof(float));
-    // float* mat_res = (float*)calloc(UNF_ARRAY_M * UNF_ARRAY_M, sizeof(float));
 
     for (int i = 0; i < UNF_ARRAY_M; i++) // Righe Unfolded
         for (int j = 0; j < UNF_ARRAY_M; j++) // Colonne Mask
             for (int k = 0; k < UNF_ARRAY_N; k++){ // Righe Mask
-                // mat_res[i * UNF_ARRAY_M + j] += mat_unfolded[i * UNF_ARRAY_N + k] * mask[k * UNF_ARRAY_M + j];
                 mat_res_col[i] += mat_unfolded[i * UNF_ARRAY_N + k] * mask[k * UNF_ARRAY_M + j];
             }
 
     printf("Risultato finale della convolution:\n");
-    // printMat(mat_res, UNF_ARRAY_M, UNF_ARRAY_M);
     printMat(mat_res_col, ARRAY_SIZE, ARRAY_SIZE);
 
     free(mask);
