@@ -95,8 +95,11 @@ mask_size = kernel.shape[0]
 
 x_unfolded = unfold_matrix(mat, mask_size)
 
-print(x_unfolded)
+np.set_printoptions(threshold=np.inf)
+np.set_printoptions(linewidth=100)
 
+print(kernel)
+print(x_unfolded)
 
 w_flat = kernel.flatten()
 

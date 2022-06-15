@@ -3,7 +3,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#define ARRAY_SIZE 4
+#define ARRAY_SIZE 16
 #define MASK_SIZE 5
 
 #define PADDED_ARRAY_SIZE (ARRAY_SIZE + ((MASK_SIZE / 2) * 2))
@@ -14,15 +14,18 @@
 // #define STEP_X (ARRAY_SIZE - MASK_SIZE)
 // #define STEP_Y (ARRAY_SIZE - MASK_SIZE)
 
-#define STEP_X 3
-#define STEP_Y 3
+#define STEP_X 11
+#define STEP_Y 11
+
+// AS: 8 SX/SY: 3
+// AS: 8 SX/SY: 3
 
 using namespace std;
 
 void printMat(float* mat, int m, int n) {
     for (int i = 0; i < m * n; i++) {
         printf("|");
-        printf(" %01.0f ", mat[i]);
+        printf(" %02.0f ", mat[i]);
         if (((i + 1) % (n) == 0) && (i != 0))
             printf("|\n");
         if ((m * n) == 1)
@@ -67,17 +70,13 @@ int main() {
     printf("Step_X: %d \n", STEP_X);
     printf("Step_Y: %d \n\n", STEP_Y);
 
-    float* mask = (float*)calloc(UNF_ARRAY_M * UNF_ARRAY_N, sizeof(float));
+    float* mask = (float*)calloc(UNF_ARRAY_N * UNF_ARRAY_M, sizeof(float));
 
-    int k = UNF_ARRAY_N;
-    for (int i = 0; i < UNF_ARRAY_N; i++)
-        if (k > 0) {
-            mask[i * UNF_ARRAY_N] = 1;
-            k--;
-        }
+    for (int i = 0; i < UNF_ARRAY_N * UNF_ARRAY_M; i++)
+            mask[i * UNF_ARRAY_M] = 1;
 
     printf("Maschera in column major con padding:\n");
-    printMat(mask, UNF_ARRAY_M, UNF_ARRAY_N);
+    printMat(mask, UNF_ARRAY_N, UNF_ARRAY_M);
 
     float* mat_start = (float*)calloc(PADDED_ARRAY_SIZE * PADDED_ARRAY_SIZE, sizeof(float));
 
@@ -95,16 +94,20 @@ int main() {
 
     printf("Matrice finale unfolded:\n");
     printMat(mat_unfolded, UNF_ARRAY_M, UNF_ARRAY_N);
-    float* mat_res_col = (float*)malloc(UNF_ARRAY_M * sizeof(float));
 
-    for (int i = 0; i < UNF_ARRAY_M; i++)
-        for (int j = 0; j < UNF_ARRAY_N; j++)
-            for (int k = 0; k < UNF_ARRAY_M; k++){
-                mat_res_col[i] += mat_unfolded[i * UNF_ARRAY_N + k] * mask[k * UNF_ARRAY_N + j];
+    float* mat_res_col = (float*)malloc(UNF_ARRAY_M * sizeof(float));
+    // float* mat_res = (float*)calloc(UNF_ARRAY_M * UNF_ARRAY_M, sizeof(float));
+
+    for (int i = 0; i < UNF_ARRAY_M; i++) // Righe Unfolded
+        for (int j = 0; j < UNF_ARRAY_M; j++) // Colonne Mask
+            for (int k = 0; k < UNF_ARRAY_N; k++){ // Righe Mask
+                // mat_res[i * UNF_ARRAY_M + j] += mat_unfolded[i * UNF_ARRAY_N + k] * mask[k * UNF_ARRAY_M + j];
+                mat_res_col[i] += mat_unfolded[i * UNF_ARRAY_N + k] * mask[k * UNF_ARRAY_M + j];
             }
 
     printf("Risultato finale della convolution:\n");
-    printMat(mat_res_col, 8, 8);
+    // printMat(mat_res, UNF_ARRAY_M, UNF_ARRAY_M);
+    printMat(mat_res_col, ARRAY_SIZE, ARRAY_SIZE);
 
     free(mask);
     free(mat_start);

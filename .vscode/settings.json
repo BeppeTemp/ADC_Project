@@ -7,7 +7,8 @@
         "CUDA",
         "nsyght",
         "nsys",
-        "nvtop"
+        "nvtop",
+        "printoptions"
     ],
     "python.formatting.provider": "black",
 }
