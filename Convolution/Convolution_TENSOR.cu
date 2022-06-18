@@ -6,8 +6,8 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
-#define ARRAY_SIZE 5
-#define MASK_SIZE 3
+#define ARRAY_SIZE 1024
+#define MASK_SIZE 5
 
 #define PADDED_ARRAY_SIZE (ARRAY_SIZE + ((MASK_SIZE / 2) * 2))
 
@@ -79,7 +79,7 @@ void matrixUnfold(half* mat_start, half* mat_unfolded) {
     }
 }
 
-__global__ void ConvolutionKernelTensor(half* mat_a, half* mask, float* mat_c) {
+__global__ void ConvolutionKernelTensor(half* unfold_mat, half* mask, float* mat_c) {
     // int row = blockIdx.y * blockDim.y + threadIdx.y;
     // int col = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -87,41 +87,21 @@ __global__ void ConvolutionKernelTensor(half* mat_a, half* mask, float* mat_c) {
     int tile_row = (blockIdx.x * blockDim.x + threadIdx.x) / 16;
     int tile_col = (blockIdx.y * blockDim.y + threadIdx.y);
 
-    // if (threadIdx.x < SIZE * SIZE / blockDim.y)
-    //     printf("Block_Dim: [%d,%d], Block_Thread: [%d,%d], Coord_Thread: [%d,%d], Tile M/N: [%d,%d]\n", blockDim.x, blockDim.y, blockIdx.x, blockIdx.y, threadIdx.x, threadIdx.y, tile_row, tile_col);
-
     // Declare the fragments
-    wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::row_major> a_frag;
+    wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::row_major> unf_row_frag;
     wmma::fragment<wmma::matrix_b, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> mask_frag;
     wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> acc_frag;
 
     wmma::fill_fragment(acc_frag, 0.0f);
 
-    // Parte da 0 e sale di 16 alla volta
-    for (int i = 0; i < size; i += WMMA_K) {
-        int aCol = i;  // 0
-        int aRow = tile_row * WMMA_M;
+    for (int i = 0; i < UNF_ARRAY_M; i++) {
+        // Load the inputs
+        wmma::load_matrix_sync(unf_row_frag, unfold_mat + ((MASK_SIZE * MASK_SIZE) * i), MASK_SIZE * MASK_SIZE);
+        wmma::load_matrix_sync(mask_frag, mask, MASK_SIZE * MASK_SIZE);
 
-        int bCol = tile_col * WMMA_N;
-        int bRow = i;  // 0
-
-        // Bounds checking
-        if (aRow < size && aCol < size && bRow < size && bCol < size) {
-            // printf("Block_Thread: [%d,%d], Coord_Thread: [%d,%d], A[%d,%d], B[%d,%d], ID: %ld, IDM: %ld, I:%d\n", blockIdx.x, blockIdx.y, threadIdx.x, threadIdx.y, aRow, aCol, bRow, bCol, mat_a, i);
-            // Load the inputs
-            wmma::load_matrix_sync(a_frag, mat_a + (aRow * size) + aCol, size);  // mat_a[aRow, aCol]
-            wmma::load_matrix_sync(mask_frag, mask + (bRow * 16) + bCol, 16);    // mask[bRow, bCol]
-
-            // Perform the matrix multiplication
-            wmma::mma_sync(acc_frag, a_frag, mask_frag, acc_frag);
-        }
+        // Perform the matrix multiplication
+        wmma::mma_sync(acc_frag, unf_row_frag, mask_frag, acc_frag);
     }
-
-    int cCol = tile_row * WMMA_N;
-    int cRow = tile_col * WMMA_M;
-
-    // Store the output
-    wmma::store_matrix_sync(mat_c + (cRow * size) + cCol, acc_frag, size, wmma::mem_row_major);  // mat_c[cRow, cCol]
 }
 
 int main(void) {
@@ -163,15 +143,15 @@ int main(void) {
     }
 
     printf("Mashera: \n");
-    printMat(mask_host, MASK_SIZE, MASK_SIZE);
+    // printMat(mask_host, MASK_SIZE, MASK_SIZE);
 
     printf("Matrice: \n");
-    printMat(mat_start_host, PADDED_ARRAY_SIZE, PADDED_ARRAY_SIZE);
+    // printMat(mat_start_host, PADDED_ARRAY_SIZE, PADDED_ARRAY_SIZE);
 
     matrixUnfold(mat_start_host, mat_unfolded_host);
 
     printf("Matrice finale unfolded:\n");
-    printMat(mat_unfolded_host, UNF_ARRAY_M, UNF_ARRAY_N);
+    // printMat(mat_unfolded_host, UNF_ARRAY_M, UNF_ARRAY_N);
 
     // Caricamento in memoria GPU
 
