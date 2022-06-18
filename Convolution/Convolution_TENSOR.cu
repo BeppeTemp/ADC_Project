@@ -6,13 +6,16 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
-#define SIZE 16
+#define ARRAY_SIZE 5
+#define MASK_SIZE 3
 
-#define MASK_SIZE 5
-#define MASK_CENTER 2
+#define PADDED_ARRAY_SIZE (ARRAY_SIZE + ((MASK_SIZE / 2) * 2))
 
-#define WARP_SIZE 32
-#define BLOCK_DIM 16
+#define UNF_ARRAY_M ((PADDED_ARRAY_SIZE - MASK_SIZE + 1) * (PADDED_ARRAY_SIZE - MASK_SIZE + 1))
+#define UNF_ARRAY_N (MASK_SIZE * MASK_SIZE)
+
+#define STEP_X (PADDED_ARRAY_SIZE - MASK_SIZE)
+#define STEP_Y (PADDED_ARRAY_SIZE - MASK_SIZE)
 
 #define WMMA_M 16
 #define WMMA_N 16
@@ -20,45 +23,76 @@
 
 using namespace nvcuda;
 
-void time_stats(float micro_seconds) {
-    printf("Execution times:\n");
-    printf("    * %.0f μs \n", micro_seconds);
-    printf("    * %.2f ms \n", micro_seconds / 1000);
-    printf("    * %.2f s \n", micro_seconds / 1000 / 1000);
+/*
+- La maschera è 16*16
+- La matrice 16 * 16 che paddata verrebbe 16+8+8 che per pure caso è 32
+*/
+
+void printMat(float* mat, int m, int n) {
+    for (int i = 0; i < m * n; i++) {
+        printf("|");
+        printf(" %02.0f ", mat[i]);
+        if (((i + 1) % (n) == 0) && (i != 0))
+            printf("|\n");
+        if ((m * n) == 1)
+            printf("|\n");
+        if (n == 1 && ((i == 0)))
+            printf("|\n");
+    }
     printf("\n");
 }
-
-void printMat(float* mat, int size) {
-    // Print the entire matrix
-    printf("\n");
-    for (int i = 0; i < (size * size); i++) {
+void printMat(half* mat, int m, int n) {
+    for (int i = 0; i < m * n; i++) {
         printf("|");
-        printf("%05.2f", mat[i]);
-        if (((i + 1) % (size) == 0) && (i != 0))
+        printf(" %01.0f ", __half2float(mat[i]));
+        if (((i + 1) % (n) == 0) && (i != 0))
             printf("|\n");
-        if ((size * size) == 1)
+        if ((m * n) == 1)
             printf("|\n");
-        if (size == 1 && ((i == 0)))
+        if (n == 1 && ((i == 0)))
             printf("|\n");
     }
     printf("\n");
 }
 
-__global__ void ConvolutionKernelTensor(half* mat_a, half* mat_b, float* mat_c, int size) {
+void matrixUnfold(half* mat_start, half* mat_unfolded) {
+    int step_x = STEP_X;
+    int step_y = STEP_Y;
+
+    int k = 0;
+    for (int t = 0; t < PADDED_ARRAY_SIZE - MASK_SIZE + 1; t++) {
+        for (int h = 0; h < PADDED_ARRAY_SIZE - MASK_SIZE + 1; h++) {
+            // printf("Stampo da [%d, %d] a [%d,%d]\n", t, h, PADDED_ARRAY_SIZE - step_x - 1, PADDED_ARRAY_SIZE - step_y - 1);
+            for (int i = t; i < PADDED_ARRAY_SIZE - step_x; i++) {
+                for (int j = h; j < PADDED_ARRAY_SIZE - step_y; j++) {
+                    // printf("[%d,%d] ", i, j);
+                    // printf("%01.0f ", mat_start[i * PADDED_ARRAY_SIZE + j]);
+                    mat_unfolded[k] = mat_start[i * PADDED_ARRAY_SIZE + j];
+                    k++;
+                }
+            }
+            step_y--;
+            // printf("\n");
+        }
+        step_y = STEP_X;
+        step_x--;
+    }
+}
+
+__global__ void ConvolutionKernelTensor(half* mat_a, half* mask, float* mat_c) {
     // int row = blockIdx.y * blockDim.y + threadIdx.y;
     // int col = blockIdx.x * blockDim.x + threadIdx.x;
 
     // Tile using a 2D grid
-    int tile_row = (blockIdx.x * blockDim.x + threadIdx.x) / WARP_SIZE;
+    int tile_row = (blockIdx.x * blockDim.x + threadIdx.x) / 16;
     int tile_col = (blockIdx.y * blockDim.y + threadIdx.y);
 
     // if (threadIdx.x < SIZE * SIZE / blockDim.y)
-    /*printf("Block_Dim: [%d,%d], Block_Thread: [%d,%d], Coord_Thread: [%d,%d], Tile M/N: [%d,%d]\n", blockDim.x, blockDim.y, blockIdx.x, blockIdx.y, threadIdx.x, threadIdx.y, tile_row, tile_col);
-     */
+    //     printf("Block_Dim: [%d,%d], Block_Thread: [%d,%d], Coord_Thread: [%d,%d], Tile M/N: [%d,%d]\n", blockDim.x, blockDim.y, blockIdx.x, blockIdx.y, threadIdx.x, threadIdx.y, tile_row, tile_col);
 
     // Declare the fragments
     wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::row_major> a_frag;
-    wmma::fragment<wmma::matrix_b, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> b_frag;
+    wmma::fragment<wmma::matrix_b, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> mask_frag;
     wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> acc_frag;
 
     wmma::fill_fragment(acc_frag, 0.0f);
@@ -76,10 +110,10 @@ __global__ void ConvolutionKernelTensor(half* mat_a, half* mat_b, float* mat_c, 
             // printf("Block_Thread: [%d,%d], Coord_Thread: [%d,%d], A[%d,%d], B[%d,%d], ID: %ld, IDM: %ld, I:%d\n", blockIdx.x, blockIdx.y, threadIdx.x, threadIdx.y, aRow, aCol, bRow, bCol, mat_a, i);
             // Load the inputs
             wmma::load_matrix_sync(a_frag, mat_a + (aRow * size) + aCol, size);  // mat_a[aRow, aCol]
-            wmma::load_matrix_sync(b_frag, mat_b + (bRow * size) + bCol, size);  // mat_b[bRow, bCol]
+            wmma::load_matrix_sync(mask_frag, mask + (bRow * 16) + bCol, 16);    // mask[bRow, bCol]
 
             // Perform the matrix multiplication
-            wmma::mma_sync(acc_frag, a_frag, b_frag, acc_frag);
+            wmma::mma_sync(acc_frag, a_frag, mask_frag, acc_frag);
         }
     }
 
@@ -91,69 +125,88 @@ __global__ void ConvolutionKernelTensor(half* mat_a, half* mat_b, float* mat_c, 
 }
 
 int main(void) {
-    half *mat_a_host, *mat_b_host;
-    float* mat_res_host_gpu;
-    half *mat_a_dev, *mat_b_dev;
+    printf("Size: %d \n", ARRAY_SIZE);
+    printf("Mask: %d \n", MASK_SIZE);
+    printf("Mask/2: %d \n", MASK_SIZE / 2);
+    printf("Padded: %d \n", PADDED_ARRAY_SIZE);
+    printf("Unf_Array_M: %d \n", UNF_ARRAY_M);
+    printf("Unf_Array_N: %d \n", UNF_ARRAY_N);
+    printf("Step_X: %d \n", STEP_X);
+    printf("Step_Y: %d \n\n", STEP_Y);
+
+    half *mat_start_host, *mat_unfolded_host, *mask_host;
+    float* mat_res_host;
+
+    half *mat_unfolded_dev, *mask_dev;
     float* mat_res_dev;
+
     dim3 gridDim, blockDim;
 
-    long nBytes = SIZE * SIZE * sizeof(float);
+    mat_start_host = (half*)calloc(PADDED_ARRAY_SIZE * PADDED_ARRAY_SIZE, sizeof(half));
+    mat_unfolded_host = (half*)calloc(UNF_ARRAY_M * UNF_ARRAY_N, sizeof(half));
+    mask_host = (half*)malloc(MASK_SIZE * MASK_SIZE * sizeof(half));
+    mat_res_host = (float*)malloc(ARRAY_SIZE * ARRAY_SIZE * sizeof(float));
 
-    mat_a_host = (half*)malloc(nBytes);
-    mat_b_host = (half*)malloc(nBytes);
-    mat_res_host_gpu = (float*)malloc(nBytes);
+    cudaMalloc((void**)&mat_unfolded_dev, UNF_ARRAY_M * UNF_ARRAY_N * sizeof(half));
+    cudaMalloc((void**)&mask_dev, MASK_SIZE * MASK_SIZE * sizeof(half));
+    cudaMalloc((void**)&mat_res_dev, ARRAY_SIZE * ARRAY_SIZE * sizeof(float));
 
-    cudaMalloc((void**)&mat_a_dev, nBytes);
-    cudaMalloc((void**)&mat_b_dev, nBytes);
-    cudaMalloc((void**)&mat_res_dev, nBytes);
-
-    for (int j = 0; j < SIZE * SIZE; j++) {
-        mat_a_host[j] = __float2half(1);
-        mat_b_host[j] = __float2half(1);
+    // Inizializzazione Maschera e Matrice iniziale
+    for (int i = 0; i < MASK_SIZE * MASK_SIZE; i++) {
+        mask_host[i] = __float2half(1);
     }
-  
 
-    cudaMemcpy(mat_a_dev, mat_a_host, nBytes, cudaMemcpyDefault);
-    cudaMemcpy(mat_b_dev, mat_b_host, nBytes, cudaMemcpyDefault);
-    cudaMemset(mat_res_dev, 0, nBytes);
+    for (int i = MASK_SIZE / 2; i < PADDED_ARRAY_SIZE - (MASK_SIZE / 2); i++) {
+        for (int j = MASK_SIZE / 2; j < PADDED_ARRAY_SIZE - (MASK_SIZE / 2); j++) {
+            mat_start_host[i * PADDED_ARRAY_SIZE + j] = __float2half(1);
+        }
+    }
+
+    printf("Mashera: \n");
+    printMat(mask_host, MASK_SIZE, MASK_SIZE);
+
+    printf("Matrice: \n");
+    printMat(mat_start_host, PADDED_ARRAY_SIZE, PADDED_ARRAY_SIZE);
+
+    matrixUnfold(mat_start_host, mat_unfolded_host);
+
+    printf("Matrice finale unfolded:\n");
+    printMat(mat_unfolded_host, UNF_ARRAY_M, UNF_ARRAY_N);
+
+    // Caricamento in memoria GPU
+
+    cudaMemcpy(mat_unfolded_dev, mat_unfolded_host, UNF_ARRAY_M * UNF_ARRAY_N * sizeof(half), cudaMemcpyDefault);
+    cudaMemcpy(mask_dev, mask_host, MASK_SIZE * MASK_SIZE * sizeof(half), cudaMemcpyDefault);
+    cudaMemset(mat_res_dev, 0, ARRAY_SIZE * ARRAY_SIZE * sizeof(float));
 
     // Abbiamo dei blocchi da 16 warp che computano ognuno tile di dimensioni 64 * 64
-    // crediamo che ogni warp abbia solo 1 tensor che computa una 4*4*4, quindi
-    // 16 warp * 4 * 4 * 4
+    // crediamo che ogni warp abbia solo 1 tensor che computa una 16*16*16, quindi
+    // 16 warp * 16 * 16 * 16
     // supponendo che warp = SM ogni SM ha un Tensor
 
     blockDim.x = 128;
     blockDim.y = 4;
-    gridDim.x = (SIZE + (WMMA_M * blockDim.x / 32 - 1)) / (WMMA_M * blockDim.x / 32);
-    gridDim.y = (SIZE + WMMA_N * blockDim.y - 1) / (WMMA_N * blockDim.y);
+    gridDim.x = (UNF_ARRAY_M + (WMMA_M * blockDim.x / 32 - 1)) / (WMMA_M * blockDim.x / 32);
+    gridDim.y = (UNF_ARRAY_N + WMMA_N * blockDim.y - 1) / (WMMA_N * blockDim.y);
 
     printf("Griglia: %d, %d\n", gridDim.x, gridDim.y);
     printf("Blocco: %d, %d\n", blockDim.x, blockDim.y);
+    printf("\n");
 
-    cudaEvent_t start, stop;
-    cudaEventCreate(&start);
-    cudaEventCreate(&stop);
+    ConvolutionKernelTensor<<<gridDim, blockDim>>>(mat_unfolded_dev, mask_dev, mat_res_dev);
 
-    cudaEventRecord(start);
-    ConvolutionKernelTensor<<<gridDim, blockDim>>>(mat_a_dev, mat_b_dev, mat_res_dev, SIZE);
-    cudaEventRecord(stop);
+    // cudaMemcpy(mat_res_host, mat_res_dev, 16 * 16 * sizeof(float), cudaMemcpyDeviceToHost);
 
-    cudaMemcpy(mat_res_host_gpu, mat_res_dev, nBytes, cudaMemcpyDeviceToHost);
+    // // printf("Matrice risultate:\n");
+    // // printMat(mat_res_host, 16, 16);
 
-    printf("Matrix size: %d x %d \n", SIZE, SIZE);
-    printf("Block size: %d x %d = %d\n", BLOCK_DIM, BLOCK_DIM, BLOCK_DIM * BLOCK_DIM);
+    // free(mat_start_host);
+    // free(mask_host);
+    // free(mat_res_host);
 
-    printMat(mat_res_host_gpu, SIZE);
-    float elapsed;
-    cudaEventElapsedTime(&elapsed, start, stop);
-    time_stats(elapsed);
-
-    free(mat_a_host);
-    free(mat_b_host);
-
-    cudaFree(mat_a_dev);
-    cudaFree(mat_b_dev);
-    cudaFree(mat_res_dev);
+    // cudaFree(mat_start_dev);
+    // cudaFree(mask_dev);
+    // cudaFree(mat_res_dev);
 
     return 0;
 }

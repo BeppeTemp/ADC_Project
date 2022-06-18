@@ -5,7 +5,7 @@
 #include <chrono>
 #include <iostream>
 
-#define MASK_SIZE 4
+#define MASK_SIZE 2
 #define MASK_CENTER 1
 
 using namespace std;
@@ -36,7 +36,7 @@ void printMat(float* mat, int size) {
 }
 
 int main() {
-    int sizes[5] = {2048, 4096, 8192, 16384, 32768};
+    int sizes[5] = {4, 4,4,4};
 
     float *mat_start, *mat_res;
     float* mask = (float*)malloc(MASK_SIZE * MASK_SIZE * sizeof(float));
