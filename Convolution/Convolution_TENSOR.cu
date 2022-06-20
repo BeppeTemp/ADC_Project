@@ -6,8 +6,8 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
-#define ARRAY_SIZE 1024
-#define MASK_SIZE 5
+#define ARRAY_SIZE 6
+#define MASK_SIZE 4
 
 #define PADDED_ARRAY_SIZE (ARRAY_SIZE + ((MASK_SIZE / 2) * 2))
 
@@ -80,11 +80,11 @@ void matrixUnfold(half* mat_start, half* mat_unfolded) {
 }
 
 __global__ void ConvolutionKernelTensor(half* unfold_mat, half* mask, float* mat_c) {
-    // int row = blockIdx.y * blockDim.y + threadIdx.y;
-    // int col = blockIdx.x * blockDim.x + threadIdx.x;
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
 
     // Tile using a 2D grid
-    int tile_row = (blockIdx.x * blockDim.x + threadIdx.x) / 16;
+    int tile_row = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
     int tile_col = (blockIdx.y * blockDim.y + threadIdx.y);
 
     // Declare the fragments
@@ -94,14 +94,24 @@ __global__ void ConvolutionKernelTensor(half* unfold_mat, half* mask, float* mat
 
     wmma::fill_fragment(acc_frag, 0.0f);
 
-    for (int i = 0; i < UNF_ARRAY_M; i++) {
+    // I cicli qua dentro per qualche motivo salgono solo di 16 per volta
+    for (int i = 0; i < UNF_ARRAY_M; i += WMMA_N) {
+        int aCol = i;  // 0
+        int aRow = tile_row * WMMA_M;
+
         // Load the inputs
-        wmma::load_matrix_sync(unf_row_frag, unfold_mat + ((MASK_SIZE * MASK_SIZE) * i), MASK_SIZE * MASK_SIZE);
+        wmma::load_matrix_sync(unf_row_frag, unfold_mat + (aRow * UNF_ARRAY_N) + aCol, MASK_SIZE);
         wmma::load_matrix_sync(mask_frag, mask, MASK_SIZE * MASK_SIZE);
 
         // Perform the matrix multiplication
         wmma::mma_sync(acc_frag, unf_row_frag, mask_frag, acc_frag);
     }
+
+    int cCol = tile_row * WMMA_N;
+    int cRow = tile_col * WMMA_M;
+
+    // Store the output
+    wmma::store_matrix_sync(mat_c + (cRow * UNF_ARRAY_N) + cCol, acc_frag, UNF_ARRAY_N, wmma::mem_row_major);  // mat_c[cRow, cCol]
 }
 
 int main(void) {
@@ -173,20 +183,25 @@ int main(void) {
     printf("Blocco: %d, %d\n", blockDim.x, blockDim.y);
     printf("\n");
 
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+
+    cudaEventRecord(start);
     ConvolutionKernelTensor<<<gridDim, blockDim>>>(mat_unfolded_dev, mask_dev, mat_res_dev);
+    cudaEventRecord(stop);
 
-    // cudaMemcpy(mat_res_host, mat_res_dev, 16 * 16 * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(mat_res_host, mat_res_dev, ARRAY_SIZE * ARRAY_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
 
-    // // printf("Matrice risultate:\n");
-    // // printMat(mat_res_host, 16, 16);
+    // printf("Matrice risultate:\n");
+    // printMat(mat_res_host, 16, 16);
 
-    // free(mat_start_host);
-    // free(mask_host);
-    // free(mat_res_host);
+    free(mat_start_host);
+    free(mask_host);
+    free(mat_res_host);
 
-    // cudaFree(mat_start_dev);
-    // cudaFree(mask_dev);
-    // cudaFree(mat_res_dev);
+    cudaFree(mask_dev);
+    cudaFree(mat_res_dev);
 
     return 0;
 }
