@@ -6,10 +6,10 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
-#define ARRAY_SIZE 32
-#define MASK_SIZE 16
+#define ARRAY_SIZE 4
+#define MASK_SIZE 4
 
-#define PADDED_ARRAY_SIZE (ARRAY_SIZE + ((MASK_SIZE / 2) * 2))
+#define PADDED_ARRAY_SIZE (ARRAY_SIZE + (((MASK_SIZE / 2) * 2) - 1))
 
 #define UNF_ARRAY_M (ARRAY_SIZE * ARRAY_SIZE)
 #define UNF_ARRAY_N (MASK_SIZE * MASK_SIZE)
@@ -31,7 +31,7 @@ using namespace nvcuda;
 void printMat(float* mat, int m, int n) {
     for (int i = 0; i < m * n; i++) {
         printf("|");
-        printf(" %02.0f ", mat[i]);
+        printf(" %01.0f ", mat[i]);
         if (((i + 1) % (n) == 0) && (i != 0))
             printf("|\n");
         if ((m * n) == 1)
@@ -80,40 +80,20 @@ void matrixUnfold(half* mat_start, half* mat_unfolded) {
 }
 
 __global__ void ConvolutionKernelTensor(half* unfold_mat, half* mask, float* mat_c) {
-    int row = blockIdx.y * blockDim.y + threadIdx.y;
-    int col = blockIdx.x * blockDim.x + threadIdx.x;
-
-    // Tile using a 2D grid
-    int tile_row = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
-    int tile_col = (blockIdx.y * blockDim.y + threadIdx.y);
-
     // Declare the fragments
-    wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::row_major> unf_row_frag;
-    wmma::fragment<wmma::matrix_b, WMMA_M, WMMA_N, WMMA_K, half, wmma::row_major> mask_frag;
+    wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> unf_row_frag;
+    wmma::fragment<wmma::matrix_b, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> mask_frag;
     wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> acc_frag;
 
     wmma::fill_fragment(acc_frag, 0.0f);
 
-    // I cicli qua dentro per qualche motivo salgono solo di 16 per volta
-    for (int i = 0; i < UNF_ARRAY_M; i += WMMA_N) {
-        int aCol = i;  // 0
-        int aRow = tile_row * WMMA_M;
+    wmma::load_matrix_sync(unf_row_frag, unfold_mat, MASK_SIZE * MASK_SIZE);
+    wmma::load_matrix_sync(mask_frag, mask, MASK_SIZE * MASK_SIZE);
 
-        if (aRow < UNF_ARRAY_M && aCol < UNF_ARRAY_M) {
-            // Load the inputs
-            wmma::load_matrix_sync(unf_row_frag, unfold_mat + (aRow * UNF_ARRAY_N) + aCol, MASK_SIZE * MASK_SIZE);
-            wmma::load_matrix_sync(mask_frag, mask, MASK_SIZE * MASK_SIZE);
+    // Perform the matrix multiplication
+    wmma::mma_sync(acc_frag, unf_row_frag, mask_frag, acc_frag);
 
-            // Perform the matrix multiplication
-            wmma::mma_sync(acc_frag, unf_row_frag, mask_frag, acc_frag);
-        }
-    }
-
-    int cCol = tile_row * WMMA_N;
-    int cRow = tile_col * WMMA_M;
-
-    // Store the output
-    wmma::store_matrix_sync(mat_c + (cRow * UNF_ARRAY_N) + cCol, acc_frag, UNF_ARRAY_N, wmma::mem_row_major);  // mat_c[cRow, cCol]
+    wmma::store_matrix_sync(mat_c, acc_frag, UNF_ARRAY_N, wmma::mem_col_major);  // mat_c[cRow, cCol]
 }
 
 int main(void) {
@@ -126,6 +106,8 @@ int main(void) {
     printf("Step_X: %d \n", STEP_X);
     printf("Step_Y: %d \n\n", STEP_Y);
 
+    printf("Centro: [2,2] \n\n");
+
     half *mat_start_host, *mat_unfolded_host, *mask_host;
     float* mat_res_host;
 
@@ -134,6 +116,7 @@ int main(void) {
 
     dim3 gridDim, blockDim;
 
+    // Dichiarazioni
     mat_start_host = (half*)calloc(PADDED_ARRAY_SIZE * PADDED_ARRAY_SIZE, sizeof(half));
     mat_unfolded_host = (half*)calloc(UNF_ARRAY_M * UNF_ARRAY_N, sizeof(half));
     mask_host = (half*)malloc(MASK_SIZE * MASK_SIZE * sizeof(half));
@@ -148,12 +131,13 @@ int main(void) {
         mask_host[i] = __float2half(1);
     }
 
-    for (int i = MASK_SIZE / 2; i < PADDED_ARRAY_SIZE - (MASK_SIZE / 2); i++) {
-        for (int j = MASK_SIZE / 2; j < PADDED_ARRAY_SIZE - (MASK_SIZE / 2); j++) {
+    for (int i = MASK_SIZE / 2; i <= PADDED_ARRAY_SIZE - (MASK_SIZE / 2); i++) {
+        for (int j = MASK_SIZE / 2; j <= PADDED_ARRAY_SIZE - (MASK_SIZE / 2); j++) {
             mat_start_host[i * PADDED_ARRAY_SIZE + j] = __float2half(1);
         }
     }
 
+    //! Debug
     printf("Mashera: \n");
     printMat(mask_host, MASK_SIZE, MASK_SIZE);
 
@@ -176,8 +160,10 @@ int main(void) {
     // 16 warp * 16 * 16 * 16
     // supponendo che warp = SM ogni SM ha un Tensor
 
-    blockDim.x = 128;
-    blockDim.y = 4;
+    //? Ogni 32 thread orizzontali c'è un Tensor e quindi computi 16 elementi
+
+    blockDim.x = 32;
+    blockDim.y = 1;
     gridDim.x = (UNF_ARRAY_M + (WMMA_M * blockDim.x / 32 - 1)) / (WMMA_M * blockDim.x / 32);
     gridDim.y = (UNF_ARRAY_N + WMMA_N * blockDim.y - 1) / (WMMA_N * blockDim.y);
 
@@ -196,7 +182,7 @@ int main(void) {
     cudaMemcpy(mat_res_host, mat_res_dev, UNF_ARRAY_M * UNF_ARRAY_N * sizeof(float), cudaMemcpyDeviceToHost);
 
     printf("Matrice risultate:\n");
-    // printMat(mat_res_host, UNF_ARRAY_M, UNF_ARRAY_N);
+    printMat(mat_res_host, UNF_ARRAY_M, UNF_ARRAY_N);
 
     free(mat_start_host);
     free(mask_host);
