@@ -3,9 +3,6 @@
 #include <mma.h>
 #include <stdio.h>
 
-#define WARP_SIZE 32
-#define BLOCK_DIM 32
-
 #define PRINT_GREEN(str) printf("\x1b[32m%s\x1b[0m", str);
 #define PRINT_RED(str) printf("\x1b[31m%s\x1b[0m", str);
 
@@ -45,7 +42,7 @@ __global__ void WMMAF16TensorCore(half* mat_a, half* mat_b, float* mat_c, int si
     // int col = blockIdx.x * blockDim.x + threadIdx.x;
 
     // Tile using a 2D grid
-    int tile_row = (blockIdx.x * blockDim.x + threadIdx.x) / WARP_SIZE;
+    int tile_row = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
     int tile_col = (blockIdx.y * blockDim.y + threadIdx.y);
 
     // if (threadIdx.x < SIZE * SIZE / blockDim.y)
@@ -138,8 +135,6 @@ int main(void) {
         }
 
         printf("Matrix size: %d x %d \n", sizes[i], sizes[i]);
-        printf("Block size: %d x %d = %d\n", BLOCK_DIM, BLOCK_DIM, BLOCK_DIM * BLOCK_DIM);
-
         printf("Check: ");
         if (check) {
             PRINT_GREEN("Verified\n");
