@@ -6,20 +6,22 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
-#define ARRAY_SIZE 4
+#define ARRAY_SIZE 13
 #define MASK_SIZE 4
 
 #define PADDED_ARRAY_SIZE (ARRAY_SIZE + (((MASK_SIZE / 2) * 2) - 1))
 
-#define UNF_ARRAY_M (ARRAY_SIZE * ARRAY_SIZE)
-#define UNF_ARRAY_N (MASK_SIZE * MASK_SIZE)
-
-#define STEP_X (PADDED_ARRAY_SIZE - MASK_SIZE)
-#define STEP_Y (PADDED_ARRAY_SIZE - MASK_SIZE)
-
 #define WMMA_M 16
 #define WMMA_N 16
 #define WMMA_K 16
+
+// Blocco 0 | 0 a 31
+// Blocco 1 | 32 0 63
+// Blocco 2 | 64 0 95
+// Blocco 3 | 96 0 127
+
+#define debug_x 96
+#define debug_y 3
 
 using namespace nvcuda;
 
@@ -31,7 +33,7 @@ using namespace nvcuda;
 void printMat(float* mat, int m, int n) {
     for (int i = 0; i < m * n; i++) {
         printf("|");
-        printf(" %01.0f ", mat[i]);
+        printf(" %02.0f ", mat[i]);
         if (((i + 1) % (n) == 0) && (i != 0))
             printf("|\n");
         if ((m * n) == 1)
@@ -44,7 +46,7 @@ void printMat(float* mat, int m, int n) {
 void printMat(half* mat, int m, int n) {
     for (int i = 0; i < m * n; i++) {
         printf("|");
-        printf(" %01.0f ", __half2float(mat[i]));
+        printf(" %02.0f ", __half2float(mat[i]));
         if (((i + 1) % (n) == 0) && (i != 0))
             printf("|\n");
         if ((m * n) == 1)
@@ -55,45 +57,69 @@ void printMat(half* mat, int m, int n) {
     printf("\n");
 }
 
-void matrixUnfold(half* mat_start, half* mat_unfolded) {
-    int step_x = STEP_X;
-    int step_y = STEP_Y;
+__global__ void ConvolutionKernelTensor(half* mat, half* mask, float* mat_res) {
+    // int row = blockIdx.y * blockDim.y + threadIdx.y;
 
-    int k = 0;
-    for (int t = 0; t < PADDED_ARRAY_SIZE - MASK_SIZE + 1; t++) {
-        for (int h = 0; h < PADDED_ARRAY_SIZE - MASK_SIZE + 1; h++) {
-            // printf("Stampo da [%d, %d] a [%d,%d]\n", t, h, PADDED_ARRAY_SIZE - step_x - 1, PADDED_ARRAY_SIZE - step_y - 1);
-            for (int i = t; i < PADDED_ARRAY_SIZE - step_x; i++) {
-                for (int j = h; j < PADDED_ARRAY_SIZE - step_y; j++) {
-                    // printf("[%d,%d] ", i, j);
-                    // printf("%01.0f ", mat_start[i * PADDED_ARRAY_SIZE + j]);
-                    mat_unfolded[k] = mat_start[i * PADDED_ARRAY_SIZE + j];
-                    k++;
-                }
-            }
-            step_y--;
-            // printf("\n");
-        }
-        step_y = STEP_X;
-        step_x--;
+    // Tile using a 2D grid
+    int tile_row = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
+    int tile_col = (blockIdx.y * blockDim.y + threadIdx.y);
+
+    // printf("tile [%d,%d]: \n", tile_row, tile_col);
+
+    if (threadIdx.x == debug_x && threadIdx.y == debug_y) {
+        printf("tile_row: %d\n", tile_row);
+        printf("tile_col: %d\n", tile_col);
+        printf("\n");
     }
-}
 
-__global__ void ConvolutionKernelTensor(half* unfold_mat, half* mask, float* mat_c) {
     // Declare the fragments
-    wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> unf_row_frag;
-    wmma::fragment<wmma::matrix_b, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> mask_frag;
+    wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::row_major> mat_frag;
+    wmma::fragment<wmma::matrix_b, WMMA_M, WMMA_N, WMMA_K, half, wmma::row_major> mask_frag;
     wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> acc_frag;
 
     wmma::fill_fragment(acc_frag, 0.0f);
 
-    wmma::load_matrix_sync(unf_row_frag, unfold_mat, MASK_SIZE * MASK_SIZE);
-    wmma::load_matrix_sync(mask_frag, mask, MASK_SIZE * MASK_SIZE);
+    // Da 0 a 3 | 1 a 4 | 2 a 5 | 3 a 6
+    // Da 19 a 22 | 20 a 23
+    // Da 38 a 41
+    // Da 57 a 60
 
-    // Perform the matrix multiplication
-    wmma::mma_sync(acc_frag, unf_row_frag, mask_frag, acc_frag);
+    // Da 0 a 3
+    // Da 4 a 7
+    // Da 8 a 11
+    // Da 12 a 15
 
-    wmma::store_matrix_sync(mat_c, acc_frag, UNF_ARRAY_N, wmma::mem_col_major);  // mat_c[cRow, cCol]
+    int j = 0;
+    for (int col = tile_col * MASK_SIZE; col < MASK_SIZE + (tile_col * MASK_SIZE); col++) {
+        for (int row = tile_row * MASK_SIZE; row < MASK_SIZE + (tile_row * MASK_SIZE); row++) {
+            // int aRow = i;  // 0
+            // int aCol = tile_col * WMMA_M;
+
+            // Bounds checking
+            if (row < PADDED_ARRAY_SIZE && col < PADDED_ARRAY_SIZE) {
+                if (threadIdx.x == debug_x && threadIdx.y == debug_y) {
+                    printf("[%d,%d] Matrice da %d a %d, machera da %d a %d \n", row, col, (row * PADDED_ARRAY_SIZE) + col, (row * PADDED_ARRAY_SIZE) + col + (MASK_SIZE - 1), j, j + (MASK_SIZE - 1));
+                }
+
+                // Load the inputs
+                wmma::load_matrix_sync(mat_frag, mat + (row * PADDED_ARRAY_SIZE) + col, MASK_SIZE);  // mat_a[aRow, aCol]
+                wmma::load_matrix_sync(mask_frag, mask + j, MASK_SIZE);
+
+                // Perform the matrix multiplication
+                wmma::mma_sync(acc_frag, mat_frag, mask_frag, acc_frag);
+            }
+        }
+        j = j + MASK_SIZE;
+        if (threadIdx.x == debug_x && threadIdx.y == debug_y) {
+            printf("\n");
+        }
+    }
+
+    // int cCol = tile_row * WMMA_N;
+    // int cRow = tile_col * WMMA_M;
+
+    // // Store the output
+    // wmma::store_matrix_sync(mat_res, acc_frag, PADDED_ARRAY_SIZE, wmma::mem_row_major);  // mat_res[cRow, cCol]
 }
 
 int main(void) {
@@ -101,41 +127,39 @@ int main(void) {
     printf("Mask: %d \n", MASK_SIZE);
     printf("Mask/2: %d \n", MASK_SIZE / 2);
     printf("Padded: %d \n", PADDED_ARRAY_SIZE);
-    printf("Unf_Array_M: %d \n", UNF_ARRAY_M);
-    printf("Unf_Array_N: %d \n", UNF_ARRAY_N);
-    printf("Step_X: %d \n", STEP_X);
-    printf("Step_Y: %d \n\n", STEP_Y);
-
     printf("Centro: [2,2] \n\n");
 
-    half *mat_start_host, *mat_unfolded_host, *mask_host;
+    half *mat_start_host, *mask_host;
     float* mat_res_host;
 
-    half *mat_unfolded_dev, *mask_dev;
+    half *mat_start_dev, *mask_dev;
     float* mat_res_dev;
 
     dim3 gridDim, blockDim;
 
     // Dichiarazioni
     mat_start_host = (half*)calloc(PADDED_ARRAY_SIZE * PADDED_ARRAY_SIZE, sizeof(half));
-    mat_unfolded_host = (half*)calloc(UNF_ARRAY_M * UNF_ARRAY_N, sizeof(half));
     mask_host = (half*)malloc(MASK_SIZE * MASK_SIZE * sizeof(half));
-    mat_res_host = (float*)malloc(UNF_ARRAY_M * UNF_ARRAY_N * sizeof(float));
+    mat_res_host = (float*)malloc(ARRAY_SIZE * ARRAY_SIZE * sizeof(float));
 
-    cudaMalloc((void**)&mat_unfolded_dev, UNF_ARRAY_M * UNF_ARRAY_N * sizeof(half));
+    cudaMalloc((void**)&mat_start_dev, PADDED_ARRAY_SIZE * PADDED_ARRAY_SIZE * sizeof(half));
     cudaMalloc((void**)&mask_dev, MASK_SIZE * MASK_SIZE * sizeof(half));
-    cudaMalloc((void**)&mat_res_dev, UNF_ARRAY_M * UNF_ARRAY_N * sizeof(float));
+    cudaMalloc((void**)&mat_res_dev, ARRAY_SIZE * ARRAY_SIZE * sizeof(float));
 
     // Inizializzazione Maschera e Matrice iniziale
     for (int i = 0; i < MASK_SIZE * MASK_SIZE; i++) {
         mask_host[i] = __float2half(1);
     }
 
-    for (int i = MASK_SIZE / 2; i <= PADDED_ARRAY_SIZE - (MASK_SIZE / 2); i++) {
-        for (int j = MASK_SIZE / 2; j <= PADDED_ARRAY_SIZE - (MASK_SIZE / 2); j++) {
-            mat_start_host[i * PADDED_ARRAY_SIZE + j] = __float2half(1);
-        }
+    for (int i = 0; i < PADDED_ARRAY_SIZE * PADDED_ARRAY_SIZE; i++) {
+        mat_start_host[i] = __float2half(i);
     }
+
+    // for (int i = MASK_SIZE / 2; i <= PADDED_ARRAY_SIZE - (MASK_SIZE / 2); i++) {
+    //     for (int j = MASK_SIZE / 2; j <= PADDED_ARRAY_SIZE - (MASK_SIZE / 2); j++) {
+    //         mat_start_host[i * PADDED_ARRAY_SIZE + j] = __float2half(1);
+    //     }
+    // }
 
     //! Debug
     printf("Mashera: \n");
@@ -144,16 +168,11 @@ int main(void) {
     printf("Matrice: \n");
     printMat(mat_start_host, PADDED_ARRAY_SIZE, PADDED_ARRAY_SIZE);
 
-    matrixUnfold(mat_start_host, mat_unfolded_host);
-
-    printf("Matrice finale unfolded:\n");
-    printMat(mat_unfolded_host, UNF_ARRAY_M, UNF_ARRAY_N);
-
     // Caricamento in memoria GPU
 
-    cudaMemcpy(mat_unfolded_dev, mat_unfolded_host, UNF_ARRAY_M * UNF_ARRAY_N * sizeof(half), cudaMemcpyDefault);
+    cudaMemcpy(mat_start_dev, mat_start_host, PADDED_ARRAY_SIZE * PADDED_ARRAY_SIZE * sizeof(half), cudaMemcpyDefault);
     cudaMemcpy(mask_dev, mask_host, MASK_SIZE * MASK_SIZE * sizeof(half), cudaMemcpyDefault);
-    cudaMemset(mat_res_dev, 0, UNF_ARRAY_M * UNF_ARRAY_N * sizeof(float));
+    cudaMemset(mat_res_dev, 0, ARRAY_SIZE * ARRAY_SIZE * sizeof(float));
 
     // Abbiamo dei blocchi da 16 warp che computano ognuno tile di dimensioni 64 * 64
     // crediamo che ogni warp abbia solo 1 tensor che computa una 16*16*16, quindi
@@ -162,10 +181,10 @@ int main(void) {
 
     //? Ogni 32 thread orizzontali c'è un Tensor e quindi computi 16 elementi
 
-    blockDim.x = 32;
-    blockDim.y = 1;
-    gridDim.x = (UNF_ARRAY_M + (WMMA_M * blockDim.x / 32 - 1)) / (WMMA_M * blockDim.x / 32);
-    gridDim.y = (UNF_ARRAY_N + WMMA_N * blockDim.y - 1) / (WMMA_N * blockDim.y);
+    blockDim.x = 128;
+    blockDim.y = 4;
+    gridDim.x = (PADDED_ARRAY_SIZE + (WMMA_M * blockDim.x / 32 - 1)) / (WMMA_M * blockDim.x / 32);
+    gridDim.y = (PADDED_ARRAY_SIZE + WMMA_N * blockDim.y - 1) / (WMMA_N * blockDim.y);
 
     printf("Griglia: %d, %d\n", gridDim.x, gridDim.y);
     printf("Blocco: %d, %d\n", blockDim.x, blockDim.y);
@@ -176,13 +195,13 @@ int main(void) {
     cudaEventCreate(&stop);
 
     cudaEventRecord(start);
-    ConvolutionKernelTensor<<<gridDim, blockDim>>>(mat_unfolded_dev, mask_dev, mat_res_dev);
+    ConvolutionKernelTensor<<<gridDim, blockDim>>>(mat_start_dev, mask_dev, mat_res_dev);
     cudaEventRecord(stop);
 
-    cudaMemcpy(mat_res_host, mat_res_dev, UNF_ARRAY_M * UNF_ARRAY_N * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(mat_res_host, mat_res_dev, ARRAY_SIZE * ARRAY_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
 
     printf("Matrice risultate:\n");
-    printMat(mat_res_host, UNF_ARRAY_M, UNF_ARRAY_N);
+    printMat(mat_res_host, ARRAY_SIZE, ARRAY_SIZE);
 
     free(mat_start_host);
     free(mask_host);

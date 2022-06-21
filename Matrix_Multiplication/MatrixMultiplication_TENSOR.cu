@@ -45,9 +45,10 @@ __global__ void WMMAF16TensorCore(half* mat_a, half* mat_b, float* mat_c, int si
     int tile_row = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
     int tile_col = (blockIdx.y * blockDim.y + threadIdx.y);
 
-    // if (threadIdx.x < SIZE * SIZE / blockDim.y)
-    /*printf("Block_Dim: [%d,%d], Block_Thread: [%d,%d], Coord_Thread: [%d,%d], Tile M/N: [%d,%d]\n", blockDim.x, blockDim.y, blockIdx.x, blockIdx.y, threadIdx.x, threadIdx.y, tile_row, tile_col);
-     */
+
+    
+    printf("Block_Dim: [%d,%d], Block_Thread: [%d,%d], Coord_Thread: [%d,%d], Tile M/N: [%d,%d]\n", blockDim.x, blockDim.y, blockIdx.x, blockIdx.y, threadIdx.x, threadIdx.y, tile_row, tile_col);
+     
 
     // Declare the fragments
     wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::row_major> a_frag;
@@ -84,7 +85,7 @@ __global__ void WMMAF16TensorCore(half* mat_a, half* mat_b, float* mat_c, int si
 }
 
 int main(void) {
-    int sizes[5] = {1024, 2048, 4096, 8192, 16384};
+    int sizes[1] = {32};
 
     half *mat_a_host, *mat_b_host;
     float* mat_res_host_gpu;
@@ -92,7 +93,7 @@ int main(void) {
     float* mat_res_dev;
     dim3 gridDim, blockDim;
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 1; i++) {
         long nBytes = sizes[i] * sizes[i] * sizeof(float);
 
         mat_a_host = (half*)malloc(nBytes);
@@ -116,6 +117,10 @@ int main(void) {
         blockDim.y = 4;
         gridDim.x = (sizes[i] + (WMMA_M * blockDim.x / 32 - 1)) / (WMMA_M * blockDim.x / 32);
         gridDim.y = (sizes[i] + WMMA_N * blockDim.y - 1) / (WMMA_N * blockDim.y);
+
+        printf("Griglia: %d, %d\n", gridDim.x, gridDim.y);
+        printf("Blocco: %d, %d\n", blockDim.x, blockDim.y);
+        printf("\n");
 
         cudaEvent_t start, stop;
         cudaEventCreate(&start);
