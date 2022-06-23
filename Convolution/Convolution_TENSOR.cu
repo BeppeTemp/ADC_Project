@@ -6,8 +6,8 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
-#define ARRAY_SIZE 13
-#define MASK_SIZE 4
+#define ARRAY_SIZE 17
+#define MASK_SIZE 16
 
 #define PADDED_ARRAY_SIZE (ARRAY_SIZE + (((MASK_SIZE / 2) * 2) - 1))
 
@@ -20,8 +20,8 @@
 // Blocco 2 | 64 0 95
 // Blocco 3 | 96 0 127
 
-#define debug_x 96
-#define debug_y 3
+#define debug_x 0
+#define debug_y 0
 
 using namespace nvcuda;
 
@@ -64,7 +64,6 @@ __global__ void ConvolutionKernelTensor(half* mat, half* mask, float* mat_res) {
     int tile_row = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
     int tile_col = (blockIdx.y * blockDim.y + threadIdx.y);
 
-    // printf("tile [%d,%d]: \n", tile_row, tile_col);
 
     if (threadIdx.x == debug_x && threadIdx.y == debug_y) {
         printf("tile_row: %d\n", tile_row);
@@ -78,16 +77,6 @@ __global__ void ConvolutionKernelTensor(half* mat, half* mask, float* mat_res) {
     wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> acc_frag;
 
     wmma::fill_fragment(acc_frag, 0.0f);
-
-    // Da 0 a 3 | 1 a 4 | 2 a 5 | 3 a 6
-    // Da 19 a 22 | 20 a 23
-    // Da 38 a 41
-    // Da 57 a 60
-
-    // Da 0 a 3
-    // Da 4 a 7
-    // Da 8 a 11
-    // Da 12 a 15
 
     int j = 0;
     for (int col = tile_col * MASK_SIZE; col < MASK_SIZE + (tile_col * MASK_SIZE); col++) {
@@ -162,11 +151,11 @@ int main(void) {
     // }
 
     //! Debug
-    printf("Mashera: \n");
-    printMat(mask_host, MASK_SIZE, MASK_SIZE);
+    // printf("Mashera: \n");
+    // printMat(mask_host, MASK_SIZE, MASK_SIZE);
 
-    printf("Matrice: \n");
-    printMat(mat_start_host, PADDED_ARRAY_SIZE, PADDED_ARRAY_SIZE);
+    // printf("Matrice: \n");
+    // printMat(mat_start_host, PADDED_ARRAY_SIZE, PADDED_ARRAY_SIZE);
 
     // Caricamento in memoria GPU
 
@@ -200,8 +189,8 @@ int main(void) {
 
     cudaMemcpy(mat_res_host, mat_res_dev, ARRAY_SIZE * ARRAY_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
 
-    printf("Matrice risultate:\n");
-    printMat(mat_res_host, ARRAY_SIZE, ARRAY_SIZE);
+    // printf("Matrice risultate:\n");
+    // printMat(mat_res_host, ARRAY_SIZE, ARRAY_SIZE);
 
     free(mat_start_host);
     free(mask_host);

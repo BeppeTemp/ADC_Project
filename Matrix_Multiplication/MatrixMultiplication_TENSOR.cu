@@ -11,6 +11,9 @@
 #define WMMA_N 16
 #define WMMA_K 16
 
+#define debug_x 0
+#define debug_y 0
+
 using namespace nvcuda;
 
 void time_stats(float micro_seconds) {
@@ -37,6 +40,20 @@ void printMat(float* mat, int size) {
     printf("\n");
 }
 
+void printMat(half* mat, int m, int n) {
+    for (int i = 0; i < m * n; i++) {
+        printf("|");
+        printf(" %02.0f ", __half2float(mat[i]));
+        if (((i + 1) % (n) == 0) && (i != 0))
+            printf("|\n");
+        if ((m * n) == 1)
+            printf("|\n");
+        if (n == 1 && ((i == 0)))
+            printf("|\n");
+    }
+    printf("\n");
+}
+
 __global__ void WMMAF16TensorCore(half* mat_a, half* mat_b, float* mat_c, int size) {
     // int row = blockIdx.y * blockDim.y + threadIdx.y;
     // int col = blockIdx.x * blockDim.x + threadIdx.x;
@@ -45,10 +62,11 @@ __global__ void WMMAF16TensorCore(half* mat_a, half* mat_b, float* mat_c, int si
     int tile_row = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
     int tile_col = (blockIdx.y * blockDim.y + threadIdx.y);
 
-
-    
-    printf("Block_Dim: [%d,%d], Block_Thread: [%d,%d], Coord_Thread: [%d,%d], Tile M/N: [%d,%d]\n", blockDim.x, blockDim.y, blockIdx.x, blockIdx.y, threadIdx.x, threadIdx.y, tile_row, tile_col);
-     
+    if (threadIdx.x == debug_x && threadIdx.y == debug_y) {
+        printf("tile_row: %d\n", tile_row);
+        printf("tile_col: %d\n", tile_col);
+        printf("\n");
+    }
 
     // Declare the fragments
     wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::row_major> a_frag;
@@ -67,6 +85,10 @@ __global__ void WMMAF16TensorCore(half* mat_a, half* mat_b, float* mat_c, int si
 
         // Bounds checking
         if (aRow < size && aCol < size && bRow < size && bCol < size) {
+            if (threadIdx.x == debug_x && threadIdx.y == debug_y) {
+                printf("[%d,%d] Matrice A da %d a %d, matrice B da %d a %d [", aRow, aCol, (aRow * size) + aCol, (bRow * size) + bCol + (size - 1), (bRow * size) + bCol, (bRow * size) + bCol + (size - 1));
+            }
+
             // printf("Block_Thread: [%d,%d], Coord_Thread: [%d,%d], A[%d,%d], B[%d,%d], ID: %ld, IDM: %ld, I:%d\n", blockIdx.x, blockIdx.y, threadIdx.x, threadIdx.y, aRow, aCol, bRow, bCol, mat_a, i);
             // Load the inputs
             wmma::load_matrix_sync(a_frag, mat_a + (aRow * size) + aCol, size);  // mat_a[aRow, aCol]
@@ -74,6 +96,13 @@ __global__ void WMMAF16TensorCore(half* mat_a, half* mat_b, float* mat_c, int si
 
             // Perform the matrix multiplication
             wmma::mma_sync(acc_frag, a_frag, b_frag, acc_frag);
+
+            if (threadIdx.x == debug_x && threadIdx.y == debug_y) {
+                for (int i = 0; i < acc_frag.num_elements; i++) {
+                    printf("%02.0f ", acc_frag.x[i]);
+                }
+                printf("]\n");
+            }
         }
     }
 
@@ -85,7 +114,7 @@ __global__ void WMMAF16TensorCore(half* mat_a, half* mat_b, float* mat_c, int si
 }
 
 int main(void) {
-    int sizes[1] = {32};
+    int sizes[1] = {16};
 
     half *mat_a_host, *mat_b_host;
     float* mat_res_host_gpu;
@@ -108,6 +137,11 @@ int main(void) {
             mat_a_host[j] = __float2half(1);
             mat_b_host[j] = __float2half(1);
         }
+
+        printf("Mat A: \n");
+        printMat(mat_a_host, sizes[i], sizes[i]);
+        printf("Mat B: \n");
+        printMat(mat_b_host, sizes[i], sizes[i]);
 
         cudaMemcpy(mat_a_dev, mat_a_host, nBytes, cudaMemcpyDefault);
         cudaMemcpy(mat_b_dev, mat_b_host, nBytes, cudaMemcpyDefault);
@@ -139,15 +173,17 @@ int main(void) {
                 check = false;
         }
 
-        printf("Matrix size: %d x %d \n", sizes[i], sizes[i]);
-        printf("Check: ");
-        if (check) {
-            PRINT_GREEN("Verified\n");
-        } else {
-            PRINT_RED("Error\n");
-        }
+        // printf("Matrix size: %d x %d \n", sizes[i], sizes[i]);
+        // printf("Check: ");
+        // if (check) {
+        //     PRINT_GREEN("Verified\n");
+        // } else {
+        //     PRINT_RED("Error\n");
+        // }
 
-        //  printMat(mat_res_host_gpu, sizes[i]);
+        printf("\nRisultato:");
+        printMat(mat_res_host_gpu, sizes[i]);
+
         float elapsed;
         cudaEventElapsedTime(&elapsed, start, stop);
         time_stats(elapsed);
