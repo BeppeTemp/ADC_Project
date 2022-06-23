@@ -6,13 +6,13 @@
 #define ARRAY_SIZE 32
 #define MASK_SIZE 16
 
-#define PADDED_ARRAY_SIZE (ARRAY_SIZE + (((MASK_SIZE / 2) * 2) - 1))
+#define PADDED_ARRAY_SIZE (ARRAY_SIZE + (((MASK_SIZE / 2) * 2)))
 
 #define WMMA_M 16
 #define WMMA_N 16
 #define WMMA_K 16
 
-#define debug_x 32
+#define debug_x 0
 #define debug_y 0
 
 using namespace nvcuda;
@@ -58,7 +58,7 @@ __global__ void WMMAF16TensorCore(half* mat, half* mask, half* mat_temp, float* 
                 }
 
                 // Load the inputs
-                wmma::load_matrix_sync(mat_frag, mat + (0 * PADDED_ARRAY_SIZE) + 9 , MASK_SIZE);
+                wmma::load_matrix_sync(mat_frag, mat + (row * PADDED_ARRAY_SIZE) + col , MASK_SIZE);
 
                 // Perform the matrix multiplication
                 wmma::mma_sync(acc_frag, mat_frag, mask_frag, acc_frag);
@@ -73,7 +73,7 @@ __global__ void WMMAF16TensorCore(half* mat, half* mask, half* mat_temp, float* 
                 }
 
                 if (threadIdx.x == debug_x && threadIdx.y == debug_y) {
-                    // printf("tot: %d\n", tot);
+                    printf("tot: %d\n", tot);
                     // if (threadIdx.x == debug_x && threadIdx.y == debug_y) {
                     //     for (int i = 0; i < MASK_SIZE * MASK_SIZE; i++) {
                     //         printf("|");
@@ -104,7 +104,7 @@ int main(void) {
 
     dim3 gridDim, blockDim;
 
-    mat_host = (half*)malloc(PADDED_ARRAY_SIZE * PADDED_ARRAY_SIZE * sizeof(half));
+    mat_host = (half*)calloc(PADDED_ARRAY_SIZE * PADDED_ARRAY_SIZE, sizeof(half));
     mask_host = (half*)malloc(MASK_SIZE * MASK_SIZE * sizeof(half));
     mat_res_host_gpu = (float*)malloc(ARRAY_SIZE * ARRAY_SIZE * sizeof(float));
 
