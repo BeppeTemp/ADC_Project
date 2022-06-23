@@ -8,26 +8,14 @@
 
 #define PADDED_ARRAY_SIZE (ARRAY_SIZE + (((MASK_SIZE / 2) * 2) - 1))
 
-#define PRINT_GREEN(str) printf("\x1b[32m%s\x1b[0m", str);
-#define PRINT_RED(str) printf("\x1b[31m%s\x1b[0m", str);
-
-// MMA matrix tile dimensions.
 #define WMMA_M 16
 #define WMMA_N 16
 #define WMMA_K 16
 
-#define debug_x 0
+#define debug_x 32
 #define debug_y 0
 
 using namespace nvcuda;
-
-void time_stats(float micro_seconds) {
-    printf("Execution times:\n");
-    printf("    * %.0f μs \n", micro_seconds);
-    printf("    * %.2f ms \n", micro_seconds / 1000);
-    printf("    * %.2f s \n", micro_seconds / 1000 / 1000);
-    printf("\n");
-}
 
 void printMat(half* mat, int m, int n) {
     for (int i = 0; i < m * n; i++) {
@@ -43,7 +31,7 @@ void printMat(half* mat, int m, int n) {
     printf("\n");
 }
 
-__global__ void WMMAF16TensorCore(half* mat, half* mask, half* mat_res_temp) {
+__global__ void WMMAF16TensorCore(half* mat, half* mask, half* mat_temp, float* mat_res) {
     int tile_row = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
     int tile_col = (blockIdx.y * blockDim.y + threadIdx.y);
 
@@ -62,78 +50,70 @@ __global__ void WMMAF16TensorCore(half* mat, half* mask, half* mat_res_temp) {
     // Charge mask fragment
     wmma::load_matrix_sync(mask_frag, mask, MASK_SIZE);  // mask[bRow, bCol]
 
-    // for (int col = tile_col * MASK_SIZE; col < MASK_SIZE + (tile_col * MASK_SIZE); col++) {
-    //     for (int row = tile_row * MASK_SIZE; row < MASK_SIZE + (tile_row * MASK_SIZE); row++) {
+    for (int col = tile_col * PADDED_ARRAY_SIZE / 2; col < MASK_SIZE + (tile_col * PADDED_ARRAY_SIZE / 2); col++) {
+        for (int row = tile_row * PADDED_ARRAY_SIZE / 2; row < MASK_SIZE + (tile_row * PADDED_ARRAY_SIZE / 2); row++) {
+            if (row < PADDED_ARRAY_SIZE && col < PADDED_ARRAY_SIZE) {
+                if (threadIdx.x == debug_x && threadIdx.y == debug_y) {
+                    printf("Coordinate A [%d,%d]\n", row, col);
+                }
 
-    // if (row < ARRAY_SIZE && col < ARRAY_SIZE) {
-    // if (threadIdx.x == debug_x && threadIdx.y == debug_y) {
-    //     printf("Coordinate A [%d,%d]\n", row, col);
-    // }
+                // Load the inputs
+                wmma::load_matrix_sync(mat_frag, mat + (0 * PADDED_ARRAY_SIZE) + 9 , MASK_SIZE);
 
-    // Load the inputs
-    wmma::load_matrix_sync(mat_frag, mat + (0 * ARRAY_SIZE) + 0, MASK_SIZE);
+                // Perform the matrix multiplication
+                wmma::mma_sync(acc_frag, mat_frag, mask_frag, acc_frag);
 
-    // Perform the matrix multiplication
-    wmma::mma_sync(acc_frag, mat_frag, mask_frag, acc_frag);
+                // Store the output
+                wmma::store_matrix_sync(mat_temp, acc_frag, MASK_SIZE, wmma::mem_col_major);
+                // wmma::store_matrix_sync(mat_temp + (aRow * size) + aCol, acc_frag, size, wmma::mem_col_major);
 
-    // Store the output
-    wmma::store_matrix_sync(mat_res_temp, acc_frag, MASK_SIZE, wmma::mem_col_major);
-    // wmma::store_matrix_sync(mat_res_temp + (aRow * size) + aCol, acc_frag, size, wmma::mem_col_major);
+                int tot = 0;
+                for (int i = 0; i < MASK_SIZE; i++) {
+                    tot += __half2int_rd(mat_temp[i * MASK_SIZE + i]);
+                }
 
-    // int tot = 0;
-    // for (int i = 0; i < MASK_SIZE; i++) {
-    //     tot += __half2int_rd(mat_res_temp[i * MASK_SIZE + i]);
-    // }
-
-    // if (threadIdx.x == debug_x && threadIdx.y == debug_y) {
-    //     printf("tot: %d\n", tot);
-    //     // if (threadIdx.x == debug_x && threadIdx.y == debug_y) {
-    //     //     for (int i = 0; i < MASK_SIZE * MASK_SIZE; i++) {
-    //     //         printf("|");
-    //     //         printf(" %06.1f ", __half2float(mat_res_temp[i]));
-    //     //         if (((i + 1) % (MASK_SIZE) == 0) && (i != 0))
-    //     //             printf("|\n");
-    //     //         if ((MASK_SIZE * MASK_SIZE) == 1)
-    //     //             printf("|\n");
-    //     //         if (MASK_SIZE == 1 && ((i == 0)))
-    //     //             printf("|\n");
-    //     //     }
-    //     //     printf("\n");
-    //     // }
-    // }
-    // }
-    //     }
-    // }
+                if (threadIdx.x == debug_x && threadIdx.y == debug_y) {
+                    // printf("tot: %d\n", tot);
+                    // if (threadIdx.x == debug_x && threadIdx.y == debug_y) {
+                    //     for (int i = 0; i < MASK_SIZE * MASK_SIZE; i++) {
+                    //         printf("|");
+                    //         printf(" %06.1f ", __half2float(mat_temp[i]));
+                    //         if (((i + 1) % (MASK_SIZE) == 0) && (i != 0))
+                    //             printf("|\n");
+                    //         if ((MASK_SIZE * MASK_SIZE) == 1)
+                    //             printf("|\n");
+                    //         if (MASK_SIZE == 1 && ((i == 0)))
+                    //             printf("|\n");
+                    //     }
+                    //     printf("\n");
+                    // }
+                }
+            }
+        }
+    }
 }
 
 int main(void) {
+    printf("padded: %d\n", PADDED_ARRAY_SIZE);
+
     half *mat_host, *mask_host;
-    half* mat_res_host_gpu;
-    half *mat_dev, *mask_dev;
-    half* mat_res_dev;
+    float* mat_res_host_gpu;
+
+    half *mat_dev, *mask_dev, *mat_temp_dev;
+    float* mat_res_dev;
+
     dim3 gridDim, blockDim;
 
     mat_host = (half*)malloc(PADDED_ARRAY_SIZE * PADDED_ARRAY_SIZE * sizeof(half));
     mask_host = (half*)malloc(MASK_SIZE * MASK_SIZE * sizeof(half));
-    mat_res_host_gpu = (half*)malloc(ARRAY_SIZE * ARRAY_SIZE * sizeof(half));
+    mat_res_host_gpu = (float*)malloc(ARRAY_SIZE * ARRAY_SIZE * sizeof(float));
 
     cudaMalloc((void**)&mat_dev, PADDED_ARRAY_SIZE * PADDED_ARRAY_SIZE * sizeof(half));
     cudaMalloc((void**)&mask_dev, MASK_SIZE * MASK_SIZE * sizeof(half));
-    cudaMalloc((void**)&mat_res_dev, ARRAY_SIZE * ARRAY_SIZE * sizeof(half));
+    cudaMalloc((void**)&mat_temp_dev, MASK_SIZE * MASK_SIZE * sizeof(half));
+    cudaMalloc((void**)&mat_res_dev, ARRAY_SIZE * ARRAY_SIZE * sizeof(float));
 
     float k = 0;
-    for (int j = 0; j < ARRAY_SIZE * ARRAY_SIZE; j++) {
-        mat_host[j] = __float2half(k);
-        k += 0.025;
-    }
-
-    printf("Mat A: \n");
-    printMat(mat_host, ARRAY_SIZE, ARRAY_SIZE);
-
-    free(mat_host);
-    mat_host = (half*)calloc(PADDED_ARRAY_SIZE * PADDED_ARRAY_SIZE, sizeof(half));
-
-    k = 0;
     for (int i = MASK_SIZE / 2; i <= PADDED_ARRAY_SIZE - (MASK_SIZE / 2); i++) {
         for (int j = MASK_SIZE / 2; j <= PADDED_ARRAY_SIZE - (MASK_SIZE / 2); j++) {
             mat_host[i * PADDED_ARRAY_SIZE + j] = __float2half(k);
@@ -141,20 +121,20 @@ int main(void) {
         }
     }
 
-    printf("Mat A: \n");
-    printMat(mat_host, PADDED_ARRAY_SIZE, PADDED_ARRAY_SIZE);
-
     k = 0;
     for (int j = 0; j < MASK_SIZE * MASK_SIZE; j++) {
         mask_host[j] = __float2half(k);
         k += 0.025;
     }
 
+    // printf("Mat A: \n");
+    // printMat(mat_host, PADDED_ARRAY_SIZE, PADDED_ARRAY_SIZE);
     // printf("Mat B: \n");
     // printMat(mask_host, MASK_SIZE, MASK_SIZE);
 
     cudaMemcpy(mat_dev, mat_host, ARRAY_SIZE * ARRAY_SIZE * sizeof(half), cudaMemcpyDefault);
     cudaMemcpy(mask_dev, mask_host, MASK_SIZE * MASK_SIZE * sizeof(half), cudaMemcpyDefault);
+    cudaMemset(mat_temp_dev, 0, ARRAY_SIZE * ARRAY_SIZE * sizeof(half));
     cudaMemset(mat_res_dev, 0, ARRAY_SIZE * ARRAY_SIZE * sizeof(half));
 
     blockDim.x = 128;
@@ -171,7 +151,7 @@ int main(void) {
     cudaEventCreate(&stop);
 
     cudaEventRecord(start);
-    WMMAF16TensorCore<<<gridDim, blockDim>>>(mat_dev, mask_dev, mat_res_dev);
+    WMMAF16TensorCore<<<gridDim, blockDim>>>(mat_dev, mask_dev, mat_temp_dev, mat_res_dev);
     cudaEventRecord(stop);
 
     cudaMemcpy(mat_res_host_gpu, mat_res_dev, ARRAY_SIZE * ARRAY_SIZE * sizeof(half), cudaMemcpyDeviceToHost);
