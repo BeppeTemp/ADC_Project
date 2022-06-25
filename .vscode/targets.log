@@ -8,7 +8,7 @@ make: *** No rule to make target 'all'.  Stop.
 # This is free software: you are free to change and redistribute it.
 # There is NO WARRANTY, to the extent permitted by law.
 
-# Make data base, printed on Wed Jun 15 05:21:18 2022
+# Make data base, printed on Sat Jun 25 12:46:28 2022
 
 # Variables
 
@@ -18,6 +18,8 @@ make: *** No rule to make target 'all'.  Stop.
 ?F = $(notdir $?)
 # default
 .SHELLFLAGS := -c
+# makefile (from 'makefile', line 14)
+OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 # environment
 XDG_SESSION_CLASS = user
 # environment
@@ -41,9 +43,11 @@ SHELL = /bin/sh
 # environment
 VSCODE_NLS_CONFIG = {"locale":"en","availableLanguages":{}}
 # environment
-_ = /home/beppetemp/.vscode-server/bin/4af164ea3a06f701fe3e89a2bcbb421d2026b68f/node
-# makefile
-MAKEFILE_LIST := 
+_ = /home/beppetemp/.vscode-server/bin/30d9c6cd9483b2cc586687151bcbcd635f373630/node
+# makefile (from 'makefile', line 2)
+CFLAGS = -I$(IDIR)
+# makefile (from 'makefile', line 1)
+MAKEFILE_LIST :=  makefile
 # 'override' directive
 GNUMAKEFLAGS := 
 # environment
@@ -57,21 +61,23 @@ LESSOPEN = | /usr/bin/lesspipe %s
 # environment
 VSCODE_CWD = /home/beppetemp
 # environment
-SSH_CONNECTION = 95.235.31.192 55646 192.168.0.221 22
+SSH_CONNECTION = 79.35.112.62 63524 192.168.0.221 22
 # environment
-PATH = /home/beppetemp/.vscode-server/bin/4af164ea3a06f701fe3e89a2bcbb421d2026b68f/bin/remote-cli:/home/beppetemp/.local/bin:/home/beppetemp/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
+PATH = /home/beppetemp/.vscode-server/bin/30d9c6cd9483b2cc586687151bcbcd635f373630/bin/remote-cli:/home/beppetemp/.local/bin:/home/beppetemp/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
 # environment
 XDG_RUNTIME_DIR = /run/user/1000
 # environment
 VSCODE_LOG_STACK = false
 # environment
-VSCODE_IPC_HOOK_CLI = /run/user/1000/vscode-ipc-9a84b7a8-b61f-4686-85cf-1b0f46e75147.sock
+VSCODE_IPC_HOOK_CLI = /run/user/1000/vscode-ipc-fa28bcef-3cc5-407d-b17a-a562b9df0279.sock
 # default
 .FEATURES := target-specific order-only second-expansion else-if shortest-stem undefine oneshell archives jobserver output-sync check-symlink load
 # environment
 LS_COLORS = 
 # automatic
 %F = $(notdir $%)
+# makefile (from 'makefile', line 10)
+_DEPS = conv_cpu.h mm_cpu.h
 # environment
 VSCODE_PIPE_LOGGING = true
 # environment
@@ -90,6 +96,8 @@ LESSCLOSE = /usr/bin/lesspipe %s %s
 LOGNAME = beppetemp
 # environment
 APPLICATION_INSIGHTS_NO_DIAGNOSTIC_CHANNEL = true
+# makefile (from 'makefile', line 5)
+IDIR = include
 # automatic
 +F = $(notdir $+)
 # environment
@@ -98,18 +106,24 @@ VSCODE_HANDLES_UNCAUGHT_ERRORS = true
 ^D = $(patsubst %/,%,$(dir $^))
 # environment
 MAKELEVEL := 0
+# makefile (from 'makefile', line 6)
+LDIR = libs
 # default
 MAKE = $(MAKE_COMMAND)
 # default
 MAKECMDGOALS := all
 # environment
 SHLVL = 1
+# makefile (from 'makefile', line 1)
+CC = g++
+# makefile (from 'makefile', line 4)
+ODIR = src
 # environment
 XDG_SESSION_ID = 2
 # environment
 USER = beppetemp
 # makefile
-.DEFAULT_GOAL := 
+.DEFAULT_GOAL := Tensor_Bench
 # automatic
 %D = $(patsubst %/,%,$(dir $%))
 # default
@@ -123,11 +137,11 @@ MAKEFLAGS = pqrR
 # environment
 MFLAGS = -pqrR
 # environment
-SSH_CLIENT = 95.235.31.192 55646 22
+SSH_CLIENT = 79.35.112.62 63524 22
 # automatic
 +D = $(patsubst %/,%,$(dir $+))
 # environment
-BROWSER = /home/beppetemp/.vscode-server/bin/4af164ea3a06f701fe3e89a2bcbb421d2026b68f/bin/helpers/browser.sh
+BROWSER = /home/beppetemp/.vscode-server/bin/30d9c6cd9483b2cc586687151bcbcd635f373630/bin/helpers/browser.sh
 # environment
 VSCODE_HANDLES_SIGPIPE = true
 # default
@@ -136,8 +150,14 @@ MAKEFILES :=
 <F = $(notdir $<)
 # environment
 LC_ALL = C
+# makefile (from 'makefile', line 8)
+LIBS = -lm
 # automatic
 ^F = $(notdir $^)
+# makefile (from 'makefile', line 13)
+_OBJ = main.o mm_cpu.o conv_cpu.o 
+# makefile (from 'makefile', line 11)
+DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 # default
 SUFFIXES := 
 # default
@@ -153,7 +173,7 @@ VSCODE_EXTHOST_WILL_SEND_SOCKET = true
 # environment
 MOTD_SHOWN = pam
 # variable set hash-table stats:
-# Load=70/1024=7%, Rehash=0, Collisions=9/92=10%
+# Load=80/1024=8%, Rehash=0, Collisions=13/112=12%
 
 # Pattern-specific Variable Values
 
@@ -161,15 +181,32 @@ MOTD_SHOWN = pam
 
 # Directories
 
-# . (device 2066, inode 7733832): 10 files, no impossibilities.
+# . (device 2066, inode 7080191): 12 files, no impossibilities.
 
-# 10 files, no impossibilities in 1 directories.
+# 12 files, no impossibilities in 1 directories.
 
 # Implicit Rules
 
-# No implicit rules.
+src/%.o: %.c include/conv_cpu.h include/mm_cpu.h
+#  recipe to execute (from 'makefile', line 17):
+	$(CC) -c -o $@ $< $(CFLAGS)
+
+# 1 implicit rules, 0 (0.0%) terminal.
 
 # Files
+
+# Not a target:
+src/conv_cpu.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+Tensor_Bench: src/main.o src/mm_cpu.o src/conv_cpu.o
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  recipe to execute (from 'makefile', line 20):
+	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
 # Not a target:
 all:
@@ -178,19 +215,23 @@ all:
 #  File does not exist.
 #  File has not been updated.
 
+.PHONY: clean
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
 # Not a target:
-Makefile:
-#  Implicit rule search has been done.
-#  File does not exist.
-#  File has been updated.
-#  Failed to be updated.
+src/main.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
 
 # Not a target:
 makefile:
 #  Implicit rule search has been done.
-#  File does not exist.
+#  Last modified 2022-06-25 12:44:54.609631612
 #  File has been updated.
-#  Failed to be updated.
+#  Successfully updated.
 
 # Not a target:
 .DEFAULT:
@@ -198,27 +239,34 @@ makefile:
 #  Modification time never checked.
 #  File has not been updated.
 
-# Not a target:
-GNUmakefile:
-#  Implicit rule search has been done.
+clean:
+#  Phony target (prerequisite of .PHONY).
+#  Implicit rule search has not been done.
 #  File does not exist.
-#  File has been updated.
-#  Failed to be updated.
+#  File has not been updated.
+#  recipe to execute (from 'makefile', line 25):
+	rm -f $(ODIR)/*.o *~ core $(INCDIR)/*~ 
+
+# Not a target:
+src/mm_cpu.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
 
 # files hash-table stats:
-# Load=6/1024=1%, Rehash=0, Collisions=0/15=0%
+# Load=10/1024=1%, Rehash=0, Collisions=0/25=0%
 # VPATH Search Paths
 
 # No 'vpath' search paths.
 
 # No general ('VPATH' variable) search path.
 
-# strcache buffers: 1 (0) / strings = 18 / storage = 173 B / avg = 9 B
-# current buf: size = 8162 B / used = 173 B / count = 18 / avg = 9 B
+# strcache buffers: 1 (0) / strings = 26 / storage = 241 B / avg = 9 B
+# current buf: size = 8162 B / used = 241 B / count = 26 / avg = 9 B
 
-# strcache performance: lookups = 21 / hit rate = 14%
+# strcache performance: lookups = 35 / hit rate = 25%
 # hash-table stats:
-# Load=18/8192=0%, Rehash=0, Collisions=1/21=5%
-# Finished Make data base on Wed Jun 15 05:21:18 2022
+# Load=26/8192=0%, Rehash=0, Collisions=1/35=3%
+# Finished Make data base on Sat Jun 25 12:46:28 2022
 
  

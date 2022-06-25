@@ -1,0 +1,1 @@
+void mm_cpu(float* mat_a, float* mat_b, float* mat_res, int size);

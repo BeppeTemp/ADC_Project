@@ -1,12 +1,4 @@
 {
-    "files.associations": {
-        "chrono": "cpp",
-        "iostream": "cpp",
-        "array": "cpp",
-        "string_view": "cpp",
-        "initializer_list": "cpp",
-        "utility": "cpp"
-    },
     "cSpell.words": [
         "CUDA",
         "nsyght",
@@ -14,5 +6,5 @@
         "nvtop",
         "printoptions"
     ],
-    "python.formatting.provider": "black",
+    "C_Cpp.errorSquiggles": "Enabled"
 }

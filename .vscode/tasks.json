@@ -96,40 +96,6 @@
                 "$eslint-compact"
             ],
             "group": "build"
-        },
-        {
-            "type": "cppbuild",
-            "label": "C/C++: g++ build active file",
-            "command": "/usr/bin/g++",
-            "args": [
-                "-fdiagnostics-color=always",
-                "-g",
-                "${file}",
-                "-o",
-                "${fileDirname}/${fileBasenameNoExtension}.out",
-                "-fopenmp"
-            ],
-            "options": {
-                "cwd": "${fileDirname}"
-            },
-            "problemMatcher": [
-                "$gcc"
-            ],
-            "group": {
-                "kind": "build",
-            },
-        },
-        {
-            "type": "shell",
-            "label": "envirorment clear",
-            "command": "rm ${fileDirname}/${fileBasenameNoExtension}.out",
-            "presentation": {
-                "reveal": "always"
-            },
-            "problemMatcher": [
-                "$eslint-compact"
-            ],
-            "group": "build"
         }
     ]
 }

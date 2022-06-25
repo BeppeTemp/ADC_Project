@@ -35,3 +35,5 @@ matrix[row][col] = array[row * size + col]
 
 //Convolution reference
 https://ulhpc-tutorials.readthedocs.io/en/latest/cuda/exercises/convolution/
+
+g++ -o bench src/main.cpp src/mm_cpu.cpp src/conv_cpu.cpp -I.

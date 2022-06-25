@@ -1,6 +1,8 @@
-make --dry-run --always-make --keep-going --print-directory
+make --dry-run --keep-going --print-directory
 make: Entering directory '/home/beppetemp/GitHub/HPC_Project'
+g++    -c -o src/main.o src/main.cpp
+g++    -c -o src/mm_cpu.o src/mm_cpu.cpp
+g++    -c -o src/conv_cpu.o src/conv_cpu.cpp
+g++ -o Tensor_Bench src/main.o src/mm_cpu.o src/conv_cpu.o -Iinclude -lm
 make: Leaving directory '/home/beppetemp/GitHub/HPC_Project'
  
-make: *** No targets specified and no makefile found.  Stop.
-
