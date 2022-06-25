@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 #define ARRAY_SIZE 16
-#define MASK_SIZE 16
+#define MASK_SIZE 4
 
 #define PADDED_ARRAY_SIZE (ARRAY_SIZE + (((MASK_SIZE / 2) * 2)))
 
@@ -12,7 +12,7 @@
 #define WMMA_N 16
 #define WMMA_K 16
 
-#define debug_x 0
+#define debug_x 1
 #define debug_y 0
 
 using namespace nvcuda;
@@ -20,7 +20,7 @@ using namespace nvcuda;
 void printMat(half* mat, int m, int n) {
     for (int i = 0; i < m * n; i++) {
         printf("|");
-        printf(" %01.0f ", __half2float(mat[i]));
+        printf(" %03.0f ", __half2float(mat[i]));
         if (((i + 1) % (n) == 0) && (i != 0))
             printf("|\n");
         if ((m * n) == 1)
@@ -34,7 +34,7 @@ void printMat(half* mat, int m, int n) {
 void printMat(float* mat, int m, int n) {
     for (int i = 0; i < m * n; i++) {
         printf("|");
-        printf(" %02.0f ", mat[i]);
+        printf(" %01.0f ", mat[i]);
         if (((i + 1) % (n) == 0) && (i != 0))
             printf("|\n");
         if ((m * n) == 1)
@@ -73,13 +73,13 @@ __global__ void WMMAF16TensorCore(half* mat, half* mask, half* mat_temp, float* 
     // }
 
     // Declare the fragments
-    wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::row_major> mat_frag;
+    wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> mat_frag;
     wmma::fragment<wmma::matrix_b, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> mask_frag;
     wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, half> acc_frag;
     wmma::fill_fragment(acc_frag, 0.0f);
 
     // Charge mask fragment
-    wmma::load_matrix_sync(mask_frag, mask, 16);  // mask[bRow, bCol]
+    wmma::load_matrix_sync(mask_frag, mask, 4);  // mask[bRow, bCol]
 
     half diag = 0;
 
@@ -88,29 +88,44 @@ __global__ void WMMAF16TensorCore(half* mat, half* mask, half* mat_temp, float* 
     for (int row = 0; row < 16; row++) {
         for (int col = 0; col < 32; col = col + 2) {
             if (row < ARRAY_SIZE && col < ARRAY_SIZE * 2) {
+                // for (int i = 0; i < 4; i++)
+                wmma::load_matrix_sync(mat_frag, mat + (row * PADDED_ARRAY_SIZE) + col, 16);
 
-                for (int i = 0; i < 16; i++)
-                {
-                    /* code */
+                if (threadIdx.x == debug_x && threadIdx.y == debug_y) {
+                    for (int i = 0; i < 16; i++) {
+                        printf("%03.0f ", __half2float(mat_frag.x[i]));
+                    }
+                    printf("\n");
+                    for (int i = 0; i < 16; i++) {
+                        printf("%03.0f ", __half2float(mask_frag.x[i]));
+                    }
+                    printf("\n");
                 }
-                
-                wmma::load_matrix_sync(mat_frag, mat + 2 + 1 * PADDED_ARRAY_SIZE, 16);
 
                 // Perform the matrix multiplication
                 wmma::mma_sync(acc_frag, mat_frag, mask_frag, acc_frag);
 
                 // Store the output
                 wmma::store_matrix_sync(mat_temp, acc_frag, 16, wmma::mem_row_major);
+
+                if (threadIdx.x == debug_x && threadIdx.y == debug_y) {
+                    for (int i = 0; i < 16; i++) {
+                        printf("%03.0f ", __half2float(acc_frag.x[i]));
+                    }
+                    printf("\n");
+                }
+
                 //     // wmma::store_matrix_sync(mat_temp + (aRow * size) + aCol, acc_frag, size, wmma::mem_col_major);
 
                 if (threadIdx.x == debug_x && threadIdx.y == debug_y) {
                     printf("Coordinate A [%d,%d]\n", row, col);
                     printf("Coordinate Scarico [%d,%d]\n", row, col / 2);
-                    printf("tot: %02.0f\n", __half2float(diag));
+                    printf("tot: %01.0f\n", __half2float(diag));
+                    printf("\n");
                     if (threadIdx.x == debug_x && threadIdx.y == debug_y) {
                         for (int i = 0; i < MASK_SIZE * MASK_SIZE; i++) {
                             printf("|");
-                            printf(" %06.1f ", __half2float(mat_temp[i]));
+                            printf(" %01.0f ", __half2float(mat_temp[i]));
                             if (((i + 1) % (MASK_SIZE) == 0) && (i != 0))
                                 printf("|\n");
                             if ((MASK_SIZE * MASK_SIZE) == 1)
@@ -157,9 +172,13 @@ int main(void) {
     for (int i = MASK_SIZE / 2; i < PADDED_ARRAY_SIZE - (MASK_SIZE / 2); i++) {
         for (int j = MASK_SIZE / 2; j < PADDED_ARRAY_SIZE - (MASK_SIZE / 2); j++) {
             mat_host[i * PADDED_ARRAY_SIZE + j] = __float2half(1);
-            k += 0.005;
+            k += 1;
         }
     }
+
+    // for (int i = 0; i < PADDED_ARRAY_SIZE * PADDED_ARRAY_SIZE; i++) {
+    //     mat_host[i] = __float2half(i);
+    // }
 
     k = 0;
     for (int j = 0; j < MASK_SIZE * MASK_SIZE; j++) {

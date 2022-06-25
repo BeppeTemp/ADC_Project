@@ -5,7 +5,7 @@
 #include <chrono>
 
 #define MASK_SIZE 4
-#define MASK_CENTER 1
+#define MASK_CENTER 2
 
 #define BLOCK_DIM 32
 #define TILE_WIDTH 32
@@ -74,7 +74,7 @@ __global__ void ConvolutionKernel(float* mat_start, float* mat_res, const float*
 }
 
 int main() {
-    int sizes[5] = {2048, 4096, 8192, 16384, 32768};
+    int sizes[5] = {16, 16, 16, 16, 16};
 
     float *mat_start_host, *mat_res_host, *mask_host;
     float *mat_start_dev, *mat_res_dev, *mask_dev;
@@ -119,7 +119,7 @@ int main() {
 
         cudaMemcpy(mat_res_host, mat_res_dev, sizes[k] * sizes[k] * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // printMat(mat_res_host, sizes[k]);
+        printMat(mat_res_host, sizes[k]);
 
         printf("Matrix size: %d x %d \n", sizes[k], sizes[k]);
         printf("Block size: %d x %d = %d\n", BLOCK_DIM, BLOCK_DIM, BLOCK_DIM * BLOCK_DIM);

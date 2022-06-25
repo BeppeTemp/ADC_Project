@@ -17,16 +17,16 @@
 
 // GEMM configuration.
 
-#define M_TILES 2
-#define N_TILES 2
-#define K_TILES 2
+#define M_TILES 1
+#define N_TILES 1
+#define K_TILES 1
 
 #define M_GLOBAL (M * M_TILES)  // 4096
 #define N_GLOBAL (N * N_TILES)  // 4096
 #define K_GLOBAL (K * K_TILES)  // 4096
 
-#define debug_x 32
-#define debug_y 1
+#define debug_x 0
+#define debug_y 0
 
 using namespace nvcuda;
 
@@ -47,7 +47,7 @@ void printMat(float* mat, int m, int n) {
 void printMat(half* mat, int m, int n) {
     for (int i = 0; i < m * n; i++) {
         printf("|");
-        printf(" %02.0f ", __half2float(mat[i]));
+        printf(" %04.0f ", __half2float(mat[i]));
         if (((i + 1) % (n) == 0) && (i != 0))
             printf("|\n");
         if ((m * n) == 1)
@@ -59,22 +59,22 @@ void printMat(half* mat, int m, int n) {
 }
 
 __host__ void init_host_matrices(half* a, half* b, float* c) {
-    // int k = 0;
+    int k = 0;
     for (int i = 0; i < M_GLOBAL; i++) {
         for (int j = 0; j < K_GLOBAL; j++) {
-            a[i * K_GLOBAL + j] = __float2half(1);
-            // a[i * K_GLOBAL + j] = __float2half(k);
-            // k++;
+            // a[i * K_GLOBAL + j] = __float2half(1);
+            a[i * K_GLOBAL + j] = __float2half(k);
+            k++;
         }
     }
 
-    // k = 0;
+    k = 0;
     for (int i = 0; i < N_GLOBAL; i++) {
         for (int j = 0; j < K_GLOBAL; j++) {
-            b[i * K_GLOBAL + j] = __float2half(1);
-            // b[i * K_GLOBAL + j] = __float2half(k);
+            // b[i * K_GLOBAL + j] = __float2half(1);
+            b[i * K_GLOBAL + j] = __float2half(k);
         }
-        // k++;
+        k++;
     }
 
     for (int t = 0; t < M_GLOBAL * N_GLOBAL; t++) {
@@ -123,8 +123,26 @@ __global__ void simple_wmma_gemm(half* a, half* b, float* c, float* d, int m_ld,
             wmma::load_matrix_sync(a_frag, a + aCol + aRow * lda, lda);
             wmma::load_matrix_sync(b_frag, b + bRow + bCol * ldb, ldb);
 
+            if (threadIdx.x == debug_x && threadIdx.y == debug_y) {
+                for (int i = 0; i < 16; i++) {
+                    printf("%04.0f ", __half2float(a_frag.x[i]));
+                }
+                printf("\n");
+                for (int i = 0; i < 16; i++) {
+                    printf("%04.0f ", __half2float(b_frag.x[i]));
+                }
+                printf("\n");
+            }
+
             // Perform the matrix multiplication
             wmma::mma_sync(acc_frag, a_frag, b_frag, acc_frag);
+
+            if (threadIdx.x == debug_x && threadIdx.y == debug_y) {
+                for (int i = 0; i < 16; i++) {
+                    printf("%04.0f ", __half2float(acc_frag.x[i]));
+                }
+                printf("\n\n");
+            }
         }
     }
     if (threadIdx.x == debug_x && threadIdx.y == debug_y) {
@@ -178,8 +196,8 @@ int main(int argc, char** argv) {
 
     init_host_matrices(A_h, B_h, C_h);
 
-    // printf("Mat A:\n");
-    // printMat(A_h, M_GLOBAL, N_GLOBAL);
+    printf("Mat A:\n");
+    printMat(A_h, M_GLOBAL, N_GLOBAL);
     // printf("Mat B:\n");
     // printMat(B_h, M_GLOBAL, N_GLOBAL);
     // printf("Mat C:\n");
