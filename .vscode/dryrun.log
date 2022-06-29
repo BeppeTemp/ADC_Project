@@ -1,4 +1,4 @@
-make --dry-run --keep-going --print-directory
+make --dry-run --always-make --keep-going --print-directory
 make: Entering directory '/home/beppetemp/GitHub/HPC_Project'
 g++    -c -o src/main.o src/main.cpp
 g++    -c -o src/mm_cpu.o src/mm_cpu.cpp
