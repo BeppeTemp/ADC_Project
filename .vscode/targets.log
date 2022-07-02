@@ -1,4 +1,6 @@
 make all --print-data-base --no-builtin-variables --no-builtin-rules --question
+make: *** No rule to make target 'all'.  Stop.
+
 # GNU Make 4.2.1
 # Built for x86_64-pc-linux-gnu
 # Copyright (C) 1988-2016 Free Software Foundation, Inc.
@@ -6,7 +8,7 @@ make all --print-data-base --no-builtin-variables --no-builtin-rules --question
 # This is free software: you are free to change and redistribute it.
 # There is NO WARRANTY, to the extent permitted by law.
 
-# Make data base, printed on Wed Jun 29 08:18:06 2022
+# Make data base, printed on Sat Jul  2 14:37:06 2022
 
 # Variables
 
@@ -59,7 +61,7 @@ LESSOPEN = | /usr/bin/lesspipe %s
 # environment
 VSCODE_CWD = /home/beppetemp
 # environment
-SSH_CONNECTION = 79.51.10.74 49152 192.168.0.221 22
+SSH_CONNECTION = 95.239.44.81 60918 192.168.0.221 22
 # environment
 PATH = /home/beppetemp/.vscode-server/bin/30d9c6cd9483b2cc586687151bcbcd635f373630/bin/remote-cli:/home/beppetemp/.local/bin:/home/beppetemp/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
 # environment
@@ -67,7 +69,7 @@ XDG_RUNTIME_DIR = /run/user/1000
 # environment
 VSCODE_LOG_STACK = false
 # environment
-VSCODE_IPC_HOOK_CLI = /run/user/1000/vscode-ipc-d90788f5-3fbf-44f2-812a-7b1a516cfded.sock
+VSCODE_IPC_HOOK_CLI = /run/user/1000/vscode-ipc-2d2c87f2-29c6-4474-884b-e2cbd851e6cf.sock
 # default
 .FEATURES := target-specific order-only second-expansion else-if shortest-stem undefine oneshell archives jobserver output-sync check-symlink load
 # environment
@@ -117,7 +119,7 @@ CC = g++
 # makefile (from 'makefile', line 4)
 ODIR = src
 # environment
-XDG_SESSION_ID = 3
+XDG_SESSION_ID = 2
 # environment
 USER = beppetemp
 # makefile
@@ -135,7 +137,7 @@ MAKEFLAGS = pqrR
 # environment
 MFLAGS = -pqrR
 # environment
-SSH_CLIENT = 79.51.10.74 49152 22
+SSH_CLIENT = 95.239.44.81 60918 22
 # automatic
 +D = $(patsubst %/,%,$(dir $+))
 # environment
@@ -227,7 +229,7 @@ src/main.o:
 # Not a target:
 makefile:
 #  Implicit rule search has been done.
-#  Last modified 2022-06-25 12:44:54.609631612
+#  Last modified 2022-06-29 09:13:26.052520723
 #  File has been updated.
 #  Successfully updated.
 
@@ -259,14 +261,12 @@ src/mm_cpu.o:
 
 # No general ('VPATH' variable) search path.
 
-# strcache buffers: 1 (0) / strings = 26 / storage = 241 B / avg = 9 B
-# current buf: size = 8162 B / used = 241 B / count = 26 / avg = 9 B
+# strcache buffers: 1 (0) / strings = 26 / storage = 259 B / avg = 9 B
+# current buf: size = 8162 B / used = 259 B / count = 26 / avg = 9 B
 
 # strcache performance: lookups = 34 / hit rate = 23%
 # hash-table stats:
 # Load=26/8192=0%, Rehash=0, Collisions=1/34=3%
-# Finished Make data base on Wed Jun 29 08:18:06 2022
+# Finished Make data base on Sat Jul  2 14:37:06 2022
 
  
-make: *** No rule to make target 'all'.  Stop.
-
