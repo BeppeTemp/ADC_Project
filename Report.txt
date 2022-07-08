@@ -1,0 +1,7 @@
+Matrix multiplication using CPU
+Matrix Size: 10
+Execution times:
+	* 290.776000 μs
+	* 0.290776 ms
+	* 0.000291 s
+

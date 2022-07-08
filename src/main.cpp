@@ -1,10 +1,20 @@
-#include <iostream>
 #include <boost/program_options.hpp>
+#include <fstream>
+#include <iostream>
 
-#include "../include/conv_cpu.hpp"
-#include "../include/mm_cpu.hpp"
+#include "../include/matrix_op.cuh"
 
+using namespace boost::program_options;
 using namespace std;
+
+class File_Report {
+   public:
+    ofstream report;
+    string myString;
+    File_Report() { report.open("Report.txt"); }
+    void write(string str) { report << str; }
+    ~File_Report() { report.close(); }
+};
 
 void printMat(float* mat, int size) {
     // Print the entire matrix
@@ -22,40 +32,60 @@ void printMat(float* mat, int size) {
     printf("\n");
 }
 
-int main() {
+string time_stats(double seconds) {
+    return string("Execution times:\n") + string("\t* ") + to_string(seconds * 1000 * 1000) + string(" μs\n") + string("\t* ") + to_string(seconds * 1000) + string(" ms\n") + string("\t* ") + to_string(seconds) + string(" s\n") + string("\n");
+}
+
+int main(int argc, char* argv[]) {
     int size;
 
-    cout << "Inserire grandezza matrice: ";
-    cin >> size;
+    // Declare the supported options.
+    options_description desc("Allowed options");
+    desc.add_options()("help", "produce help message")("size", value<int>()->required(), "set size of matrix");
 
-    float *mat_a, *mat_b, *mat_res;
+    try {
+        // Parse the command line arguments.
+        variables_map vm;
+        store(parse_command_line(argc, argv, desc), vm);
+        notify(vm);
 
-    mat_a = (float*)malloc(size * size * sizeof(float));
-    mat_b = (float*)malloc(size * size * sizeof(float));
-    mat_res = (float*)calloc(size * size, sizeof(float));
+        // Print help message.
+        if (vm.count("help")) {
+            cout << desc << "\n";
+            return 1;
+        }
 
-    for (int i = 0; i < size * size; i++) {
-        mat_a[i] = 1;
-        mat_b[i] = 1;
+        size = vm["size"].as<int>();
+
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+        return 1;
     }
 
-    mm_cpu(mat_a, mat_b, mat_res, size);
-    cout << "Risultato matrice a * b: ";
-    printMat(mat_res, size);
+    File_Report fr;
+ 
+    float* mat_res = (float*)calloc(size * size, sizeof(float));
 
-    int mask_size;
+    fr.write("Matrix multiplication using CPU\n");
+    fr.write("Matrix Size: " + to_string(size) + "\n");
+    fr.write(time_stats(mm_cpu(mat_res, size)));
 
-    cout << "Inserire grandezza maschera: ";
-    cin >> mask_size;
+    // cout << "Risultato matrice a * b: ";
+    // printMat(mat_res, size);
 
-    float *mask, *mat_start;
+    // int mask_size;
 
-    mat_start = (float*)malloc(size * size * sizeof(float));
-    mask = (float*)malloc(mask_size * mask_size * sizeof(float));
+    // cout << "Inserire grandezza maschera: ";
+    // cin >> mask_size;
 
-    conv_cpu(mat_start, mask, mat_res, size, mask_size, mask_size / 2);
-    cout << "Risultato conv: ";
-    printMat(mat_res, size);
+    // float *mask, *mat_start;
+
+    // mat_start = (float*)malloc(size * size * sizeof(float));
+    // mask = (float*)malloc(mask_size * mask_size * sizeof(float));
+
+    // conv_cpu(mat_start, mask, mat_res, size, mask_size, mask_size / 2);
+    // cout << "Risultato conv: ";
+    // printMat(mat_res, size);
 
     return 0;
 }

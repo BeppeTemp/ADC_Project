@@ -1,25 +1,30 @@
-CC = g++
-CFLAGS = -I$(IDIR)
+CC = nvcc
+CFLAGS = -I/$(IDIR) -lboost_program_options -Xcompiler -fopenmp
 
 ODIR = src
 IDIR = include
-LDIR = libs
 
-LIBS=-lm
-
-_DEPS = conv_cpu.h mm_cpu.h
+_DEPS = matrix_op.cuh
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = main.o mm_cpu.o conv_cpu.o 
+_OBJ = main.cpp matrix_op.cu
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 $(ODIR)/%.o: %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 Tensor_Bench: $(OBJ)
-	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
-
-.PHONY: clean
+	$(CC) -o $@ $^ $(CFLAGS)
 
 clean:
-	rm -f $(ODIR)/*.o *~ core $(INCDIR)/*~ 
+	echo "Cleaning..."
+	rm -f src/conv/*.o
+	rm -f src/mm/*.o
+	rm -f src/*.o
+	rm -f Tensor_Bench
+
+test:
+	@echo $(CC)
+	@echo $(CFLAGS)
+	@echo $(DEPS)
+	@echo $(OBJ)

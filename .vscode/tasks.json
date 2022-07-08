@@ -1,101 +1,108 @@
 {
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "type": "shell",
-            "label": "C++ Compile and Run (Standard)",
-            "command": "g++ -g ${fileDirname}/${fileBasename} -o ${fileBasenameNoExtension}.out && ./${fileBasenameNoExtension}.out && rm ${fileBasenameNoExtension}.out",
-            "presentation": {
-                "reveal": "always"
-            },
-            "problemMatcher": [
-                "$eslint-compact"
-            ],
-            "group": {
-                "kind": "build",
-                "isDefault": false
-            }
-        },
-        {
-            "type": "shell",
-            "label": "C Compile and Run (Standard)",
-            "command": "gcc -g ${fileDirname}/${fileBasename} -o ${fileBasenameNoExtension}.out && ./${fileBasenameNoExtension}.out && rm ${fileBasenameNoExtension}.out",
-            "presentation": {
-                "reveal": "always"
-            },
-            "problemMatcher": [
-                "$eslint-compact"
-            ],
-            "group": {
-                "kind": "build",
-                "isDefault": false
-            }
-        },
-        {
-            "type": "shell",
-            "label": "C++ Compile and Run (Optimized)",
-            "command": "g++ -O3 -g ${fileDirname}/${fileBasename} -o ${fileBasenameNoExtension}.out && ./${fileBasenameNoExtension}.out && rm ${fileBasenameNoExtension}.out",
-            "presentation": {
-                "reveal": "always"
-            },
-            "problemMatcher": [
-                "$eslint-compact"
-            ],
-            "group": {
-                "kind": "build",
-                "isDefault": false
-            }
-        },
-        {
-            "type": "shell",
-            "label": "C++ Compile and Run (OpenMP)",
-            "command": "g++ -O3 -g ${fileDirname}/${fileBasename} -o ${fileBasenameNoExtension}.out -fopenmp && ./${fileBasenameNoExtension}.out && rm ${fileBasenameNoExtension}.out",
-            "presentation": {
-                "reveal": "always"
-            },
-            "problemMatcher": [
-                "$eslint-compact"
-            ],
-            "group": {
-                "kind": "build",
-                "isDefault": false
-            }
-        },
-        {
-            "type": "shell",
-            "label": "CUDA Compile (RTX 2060)",
-            "command": "nvcc -lcublas -gencode=arch=compute_75,code=sm_75 -Xptxas=\"-v\" -g ${fileDirname}/${fileBasename} -o ${fileBasenameNoExtension}.out",
-            "presentation": {
-                "reveal": "always"
-            },
-            "problemMatcher": [
-                "$eslint-compact"
-            ],
-            "group": "build"
-        },
-        {
-            "type": "shell",
-            "label": "CUDA Compile and Run (RTX 2060)",
-            "command": "nvcc -lcublas -gencode=arch=compute_75,code=sm_75 -g ${fileDirname}/${fileBasename} -o ${fileBasenameNoExtension}.out && ./${fileBasenameNoExtension}.out && rm ${fileBasenameNoExtension}.out",
-            "presentation": {
-                "reveal": "always"
-            },
-            "problemMatcher": [
-                "$eslint-compact"
-            ],
-            "group": "build"
-        },
-        {
-            "type": "shell",
-            "label": "CUDA Profiling",
-            "command": "nvcc -lcublas -gencode=arch=compute_75,code=sm_75 -g ${fileDirname}/${fileBasename} -o ${fileBasenameNoExtension}.out && nvprof ./${fileBasenameNoExtension}.out && rm ${fileBasenameNoExtension}.out",
-            "presentation": {
-                "reveal": "always"
-            },
-            "problemMatcher": [
-                "$eslint-compact"
-            ],
-            "group": "build"
-        }
-    ]
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "shell",
+      "label": "Make Project",
+      "command": "make && ./Tensor_Bench ${input:Argument} && make clean",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": ["$eslint-compact"],
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      }
+    },
+    {
+      "type": "shell",
+      "label": "C++ Compile and Run (Standard)",
+      "command": "g++ -g ${fileDirname}/${fileBasename} -o ${fileBasenameNoExtension}.out && ./${fileBasenameNoExtension}.out && rm ${fileBasenameNoExtension}.out",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": ["$eslint-compact"],
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      }
+    },
+    {
+      "type": "shell",
+      "label": "C Compile and Run (Standard)",
+      "command": "gcc -g ${fileDirname}/${fileBasename} -o ${fileBasenameNoExtension}.out && ./${fileBasenameNoExtension}.out && rm ${fileBasenameNoExtension}.out",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": ["$eslint-compact"],
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      }
+    },
+    {
+      "type": "shell",
+      "label": "C++ Compile and Run (Optimized)",
+      "command": "g++ -O3 -g ${fileDirname}/${fileBasename} -o ${fileBasenameNoExtension}.out && ./${fileBasenameNoExtension}.out && rm ${fileBasenameNoExtension}.out",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": ["$eslint-compact"],
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      }
+    },
+    {
+      "type": "shell",
+      "label": "C++ Compile and Run (OpenMP)",
+      "command": "g++ -O3 -g ${fileDirname}/${fileBasename} -o ${fileBasenameNoExtension}.out -fopenmp && ./${fileBasenameNoExtension}.out && rm ${fileBasenameNoExtension}.out",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": ["$eslint-compact"],
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      }
+    },
+    {
+      "type": "shell",
+      "label": "CUDA Compile (RTX 2060)",
+      "command": "nvcc -lcublas -gencode=arch=compute_75,code=sm_75 -Xptxas=\"-v\" -g ${fileDirname}/${fileBasename} -o ${fileBasenameNoExtension}.out",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": ["$eslint-compact"],
+      "group": "build"
+    },
+    {
+      "type": "shell",
+      "label": "CUDA Compile and Run (RTX 2060)",
+      "command": "nvcc -lcublas -gencode=arch=compute_75,code=sm_75 -g ${fileDirname}/${fileBasename} -o ${fileBasenameNoExtension}.out && ./${fileBasenameNoExtension}.out && rm ${fileBasenameNoExtension}.out",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": ["$eslint-compact"],
+      "group": "build"
+    },
+    {
+      "type": "shell",
+      "label": "CUDA Profiling",
+      "command": "nvcc -lcublas -gencode=arch=compute_75,code=sm_75 -g ${fileDirname}/${fileBasename} -o ${fileBasenameNoExtension}.out && nvprof ./${fileBasenameNoExtension}.out && rm ${fileBasenameNoExtension}.out",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": ["$eslint-compact"],
+      "group": "build"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "Argument",
+      "type": "promptString",
+      "default": "--size 10",
+      "description": "Argument to pass to the executable"
+    }
+  ]
 }

@@ -1,0 +1,1 @@
+double mm_cpu(float* mat_res, int size);
