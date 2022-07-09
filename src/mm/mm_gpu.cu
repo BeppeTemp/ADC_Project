@@ -9,6 +9,10 @@
 #define BLOCK_DIM 32
 #define TILE_WIDTH 32
 
+#if (__CUDA_ARCH__ >= 200)
+    #warning "hello"
+#endif
+
 void time_stats(float micro_seconds) {
     printf("Execution times:\n");
     printf("    * %.0f μs \n", micro_seconds * 1000);
