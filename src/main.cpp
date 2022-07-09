@@ -1,3 +1,5 @@
+#include <cuda.h>
+#include <mma.h>
 #include <boost/program_options.hpp>
 #include <fstream>
 #include <iostream>
@@ -10,7 +12,6 @@ using namespace std;
 class File_Report {
    public:
     ofstream report;
-    string myString;
     File_Report() { report.open("Report.txt"); }
     void write(string str) { report << str; }
     ~File_Report() { report.close(); }
@@ -56,6 +57,7 @@ int main(int argc, char* argv[]) {
         }
 
         size = vm["size"].as<int>();
+        // Multiplo di 16 massimo testato 16384
 
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
@@ -63,29 +65,34 @@ int main(int argc, char* argv[]) {
     }
 
     File_Report fr;
- 
+
+    float* mat_a = (float*)malloc(size * size * sizeof(float));
+    float* mat_b = (float*)malloc(size * size * sizeof(float));
     float* mat_res = (float*)calloc(size * size, sizeof(float));
+
+    for (int i = 0; i < size * size; i++) {
+        mat_a[i] = 1;
+        mat_b[i] = 1;
+    }
 
     fr.write("Matrix multiplication using CPU\n");
     fr.write("Matrix Size: " + to_string(size) + "\n");
-    fr.write(time_stats(mm_cpu(mat_res, size)));
+    fr.write(time_stats(mm_cpu(mat_a, mat_b, mat_res, size)));
 
-    // cout << "Risultato matrice a * b: ";
-    // printMat(mat_res, size);
+    fr.write("Matrix multiplication using GPU\n");
+    fr.write("Matrix Size: " + to_string(size) + "\n");
+    fr.write(time_stats(mm_gpu(mat_a, mat_b, mat_res, size)));
 
-    // int mask_size;
+    half* mat_a_half = (half*)malloc(size * size * sizeof(half));
+    half* mat_b_half = (half*)malloc(size * size * sizeof(half));
+    for (int i = 0; i < size * size; i++) {
+        mat_a_half[i] = __float2half(1);
+        mat_b_half[i] = __float2half(1);
+    }
 
-    // cout << "Inserire grandezza maschera: ";
-    // cin >> mask_size;
-
-    // float *mask, *mat_start;
-
-    // mat_start = (float*)malloc(size * size * sizeof(float));
-    // mask = (float*)malloc(mask_size * mask_size * sizeof(float));
-
-    // conv_cpu(mat_start, mask, mat_res, size, mask_size, mask_size / 2);
-    // cout << "Risultato conv: ";
-    // printMat(mat_res, size);
+    fr.write("Matrix multiplication using Tensor\n");
+    fr.write("Matrix Size: " + to_string(size) + "\n");
+    fr.write(time_stats(mm_tensor(mat_a_half, mat_b_half, mat_res, size)));
 
     return 0;
 }
