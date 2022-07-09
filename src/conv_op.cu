@@ -98,3 +98,11 @@ double conv_gpu(float* mat_start, float* mask, float* mat_res, int mat_size) {
 
     return elapsed;
 }
+
+// Matrix Checker
+bool conv_checker(float* mat_a, float* mat_b, int size){
+    for (int i = 0; i < size * size; i++)
+        if (mat_a[i] != mat_b[i])
+            return false;
+    return true;
+}

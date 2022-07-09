@@ -30,7 +30,7 @@ __global__ void mm_tiled_kernel(float* mat_a, float* mat_b, float* res_mat, int 
 
         __syncthreads();
 
-        #pragma unroll
+#pragma unroll
         for (int k = 0; k < BLOCK_DIM; ++k) {
             temp += m_a_sh[ty][k] * m_b_sh[k][tx];
         }
@@ -165,4 +165,12 @@ double mm_tensor(half* mat_a, half* mat_b, float* mat_res, int size) {
     cudaFree(res_mat_dev);
 
     return elapsed;
+}
+
+// Matrix Checker
+bool mm_checker(float* mat_res, int size) {
+    for (int i = 0; i < size * size; i++)
+        if (mat_res[i] != 16)
+            return false;
+    return true;
 }

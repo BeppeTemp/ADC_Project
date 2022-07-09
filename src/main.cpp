@@ -4,6 +4,9 @@
 #include <fstream>
 #include <iostream>
 
+#define PRINT_GREEN(str) printf("\x1b[32m%s\x1b[0m", str);
+#define PRINT_RED(str) printf("\x1b[31m%s\x1b[0m", str);
+
 #include "../include/conv_op.cuh"
 #include "../include/matrix_op.cuh"
 
@@ -79,22 +82,32 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < MASK_SIZE * MASK_SIZE; i++)
         mask[i] = 1;
 
-    mat_res = (float*)calloc(size * size, sizeof(float));
+    float* mat_res_cpu = (float*)calloc(size * size, sizeof(float));
     fr.write("Convolution using CPU\n");
     fr.write("Matrix Size: " + to_string(size) + "\n");
-    fr.write(time_stats(conv_cpu(mat_start, mask, mat_res, size)));
-    printMat(mat_res, size);
-    free(mat_res);
+    fr.write(time_stats(conv_cpu(mat_start, mask, mat_res_cpu, size)));
+    printf("Convolution on CPU completed.\n");
+    // printMat(mat_res_cpu, size);
 
-    mat_res = (float*)calloc(size * size, sizeof(float));
+    float* mat_res_gpu = (float*)calloc(size * size, sizeof(float));
     fr.write("Convolution using GPU\n");
     fr.write("Matrix Size: " + to_string(size) + "\n");
-    fr.write(time_stats(conv_gpu(mat_start, mask, mat_res, size)));
-    printMat(mat_res, size);
-    free(mat_res);
+    fr.write(time_stats(conv_gpu(mat_start, mask, mat_res_gpu, size)));
+    printf("Convolution on GPU completed.\n");
+    // printMat(mat_res_gpu, size);
 
+    printf("Result (");
+    if (conv_checker(mat_res_cpu, mat_res_gpu, size)) {
+        PRINT_GREEN("Correct");
+    } else {
+        PRINT_RED("Incorrect");
+    }
+    printf(").\n");
+    
     free(mat_start);
     free(mask);
+    free(mat_res_cpu);
+    free(mat_res_gpu);
 
     // Matrix Multiplication section
     float* mat_a = (float*)malloc(size * size * sizeof(float));
@@ -109,6 +122,15 @@ int main(int argc, char* argv[]) {
     fr.write("Matrix multiplication using CPU\n");
     fr.write("Matrix Size: " + to_string(size) + "\n");
     fr.write(time_stats(mm_cpu(mat_a, mat_b, mat_res, size)));
+
+    printf("Matrix multiplication on CPU completed (");
+    if (mm_checker(mat_res, size)) {
+        PRINT_GREEN("Correct");
+    } else {
+        PRINT_RED("Incorrect");
+    }
+    printf(").\n");
+
     printMat(mat_res, size);
     free(mat_res);
 
@@ -116,6 +138,15 @@ int main(int argc, char* argv[]) {
     fr.write("Matrix multiplication using GPU\n");
     fr.write("Matrix Size: " + to_string(size) + "\n");
     fr.write(time_stats(mm_gpu(mat_a, mat_b, mat_res, size)));
+
+    printf("Matrix multiplication on GPU completed (");
+    if (mm_checker(mat_res, size)) {
+        PRINT_GREEN("Correct");
+    } else {
+        PRINT_RED("Incorrect");
+    }
+    printf(").\n");
+
     printMat(mat_res, size);
     free(mat_res);
 
@@ -134,6 +165,15 @@ int main(int argc, char* argv[]) {
     fr.write("Matrix multiplication using Tensor\n");
     fr.write("Matrix Size: " + to_string(size) + "\n");
     fr.write(time_stats(mm_tensor(mat_a_half, mat_b_half, mat_res, size)));
+
+    printf("Matrix multiplication on Tensor completed (");
+    if (mm_checker(mat_res, size)) {
+        PRINT_GREEN("Correct");
+    } else {
+        PRINT_RED("Incorrect");
+    }
+    printf(").\n");
+
     printMat(mat_res, size);
     free(mat_res);
 

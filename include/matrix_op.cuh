@@ -13,3 +13,5 @@
 double mm_cpu(float* mat_a, float* mat_b, float* mat_res, int size);
 double mm_gpu(float* mat_a, float* mat_b, float* mat_res, int size);
 double mm_tensor(half* mat_a, half* mat_b, float* mat_res, int size);
+
+bool mm_checker(float* mat_res, int size);
