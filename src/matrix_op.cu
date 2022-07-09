@@ -1,6 +1,6 @@
 #include <cuda.h>
-#include <omp.h>
 #include <mma.h>
+#include <omp.h>
 #include <iostream>
 
 #include "../include/matrix_op.cuh"
@@ -9,6 +9,9 @@ using namespace nvcuda;
 
 // Kernels
 __global__ void mm_tiled_kernel(float* mat_a, float* mat_b, float* res_mat, int size) {
+    __shared__ float m_a_sh[BLOCK_DIM][BLOCK_DIM];
+    __shared__ float m_b_sh[BLOCK_DIM][BLOCK_DIM];
+
     int tx = threadIdx.x;
     int ty = threadIdx.y;
     int bx = blockIdx.x;
@@ -22,9 +25,6 @@ __global__ void mm_tiled_kernel(float* mat_a, float* mat_b, float* res_mat, int 
 
     float temp = 0;
     for (int a = mat_a_begin, b = mat_b_begin; a <= mat_a_end; a += BLOCK_DIM, b += mat_b_step) {
-        __shared__ float m_a_sh[BLOCK_DIM][BLOCK_DIM];
-        __shared__ float m_b_sh[BLOCK_DIM][BLOCK_DIM];
-
         m_a_sh[ty][tx] = mat_a[a + size * ty + tx];
         m_b_sh[ty][tx] = mat_b[b + size * ty + tx];
 
@@ -83,7 +83,7 @@ __global__ void mm_tensor_kernel(half* mat_a, half* mat_b, float* res_mat, int s
 double mm_cpu(float* mat_a, float* mat_b, float* mat_res, int size) {
     double t_init = omp_get_wtime();
 
-    #pragma omp parallel for collapse(3)
+#pragma omp parallel for collapse(3)
     for (int mat_row = 0; mat_row < size; mat_row++)
         for (int mat_col = 0; mat_col < size; mat_col++)
             for (int k_row = 0; k_row < size; k_row++)
@@ -130,7 +130,7 @@ double mm_gpu(float* mat_a, float* mat_b, float* mat_res, int size) {
 }
 double mm_tensor(half* mat_a, half* mat_b, float* mat_res, int size) {
     half *mat_b_dev, *mat_a_dev;
-    float *res_mat_dev;
+    float* res_mat_dev;
 
     cudaMalloc((void**)&mat_a_dev, size * size * sizeof(half));
     cudaMalloc((void**)&mat_b_dev, size * size * sizeof(half));

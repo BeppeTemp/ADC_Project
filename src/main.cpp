@@ -69,6 +69,33 @@ int main(int argc, char* argv[]) {
     File_Report fr;
     float* mat_res;
 
+    // Convolution section
+    float* mat_start = (float*)malloc(size * size * sizeof(float));
+    float* mask = (float*)malloc(MASK_SIZE * MASK_SIZE * sizeof(float));
+
+    for (int i = 0; i < size * size; i++)
+        mat_start[i] = 1;
+
+    for (int i = 0; i < MASK_SIZE * MASK_SIZE; i++)
+        mask[i] = 1;
+
+    mat_res = (float*)calloc(size * size, sizeof(float));
+    fr.write("Convolution using CPU\n");
+    fr.write("Matrix Size: " + to_string(size) + "\n");
+    fr.write(time_stats(conv_cpu(mat_start, mask, mat_res, size)));
+    printMat(mat_res, size);
+    free(mat_res);
+
+    mat_res = (float*)calloc(size * size, sizeof(float));
+    fr.write("Convolution using GPU\n");
+    fr.write("Matrix Size: " + to_string(size) + "\n");
+    fr.write(time_stats(conv_gpu(mat_start, mask, mat_res, size)));
+    printMat(mat_res, size);
+    free(mat_res);
+
+    free(mat_start);
+    free(mask);
+
     // Matrix Multiplication section
     float* mat_a = (float*)malloc(size * size * sizeof(float));
     float* mat_b = (float*)malloc(size * size * sizeof(float));
@@ -112,33 +139,6 @@ int main(int argc, char* argv[]) {
 
     free(mat_a_half);
     free(mat_b_half);
-
-    // Convolution section
-    float* mat_start = (float*)malloc(size * size * sizeof(float));
-    float* mask = (float*)malloc(MASK_SIZE * MASK_SIZE * sizeof(float));
-
-    for (int i = 0; i < MASK_SIZE * MASK_SIZE; i++)
-        mask[i] = 1;
-
-    for (int i = 0; i < size * size; i++)
-        mat_start[i] = 1;
-
-    mat_res = (float*)calloc(size * size, sizeof(float));
-    fr.write("Convolution using CPU\n");
-    fr.write("Matrix Size: " + to_string(size) + "\n");
-    fr.write(time_stats(conv_cpu(mat_start, mask, mat_res, size)));
-    printMat(mat_res, size);
-    free(mat_res);
-
-    mat_res = (float*)calloc(size * size, sizeof(float));
-    fr.write("Convolution using GPU\n");
-    fr.write("Matrix Size: " + to_string(size) + "\n");
-    fr.write(time_stats(conv_gpu(mat_start, mask, mat_res, size)));
-    printMat(mat_res, size);
-    free(mat_res);
-
-    free(mat_start);
-    free(mask);
 
     return 0;
 }

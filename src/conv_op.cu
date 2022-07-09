@@ -5,7 +5,7 @@
 #include "../include/conv_op.cuh"
 
 // Kernels
-__global__ void conv_kernel(float* mat_start, float* mask, float* mat_res, int mat_size) {
+__global__ void conv_kernel(float* mat_start, const float* mask, float* mat_res, int mat_size) {
     int tx = threadIdx.x;
     int ty = threadIdx.y;
 
@@ -25,7 +25,7 @@ __global__ void conv_kernel(float* mat_start, float* mask, float* mat_res, int m
         n_ds[ty][tx] = mat_start[(row_i * mat_size) + col_i];
     }
 
-    __syncthreads();
+     __syncthreads();
 
     // Convolution calculation
     float output = 0.0f;
@@ -35,7 +35,7 @@ __global__ void conv_kernel(float* mat_start, float* mask, float* mat_res, int m
                 output += mask[(i * MASK_SIZE) + j] * n_ds[i + ty][j + tx];
             }
         }
-        if (row_o < mat_size && col_o < mat_size) {
+        if (row_o < mat_size && col_o < mat_size) {      
             mat_res[row_o * mat_size + col_o] = output;
         }
     }
