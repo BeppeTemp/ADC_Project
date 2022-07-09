@@ -84,7 +84,7 @@ double conv_gpu(float* mat_start, float* mask, float* mat_res, int mat_size) {
     cudaEventCreate(&stop);
 
     cudaEventRecord(start);
-    conv_kernel<<<gridDim, blockDim>>>(mat_start_dev, mat_res_dev, mask_dev, mat_size);
+    conv_kernel<<<gridDim, blockDim>>>(mat_start_dev, mask_dev, mat_res_dev, mat_size);
     cudaEventRecord(stop);
 
     cudaMemcpy(mat_res, mat_res_dev, mat_size * mat_size * sizeof(float), cudaMemcpyDeviceToHost);
