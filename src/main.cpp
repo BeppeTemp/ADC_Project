@@ -4,11 +4,13 @@
 #include <fstream>
 #include <iostream>
 
+#include "../include/conv_op.cuh"
 #include "../include/matrix_op.cuh"
 
 using namespace boost::program_options;
 using namespace std;
 
+// Report file object
 class File_Report {
    public:
     ofstream report;
@@ -17,6 +19,7 @@ class File_Report {
     ~File_Report() { report.close(); }
 };
 
+// Functions
 void printMat(float* mat, int size) {
     // Print the entire matrix
     printf("\n");
@@ -32,7 +35,6 @@ void printMat(float* mat, int size) {
     }
     printf("\n");
 }
-
 string time_stats(double seconds) {
     return string("Execution times:\n") + string("\t* ") + to_string(seconds * 1000 * 1000) + string(" μs\n") + string("\t* ") + to_string(seconds * 1000) + string(" ms\n") + string("\t* ") + to_string(seconds) + string(" s\n") + string("\n");
 }
@@ -65,34 +67,78 @@ int main(int argc, char* argv[]) {
     }
 
     File_Report fr;
+    float* mat_res;
 
+    // Matrix Multiplication section
     float* mat_a = (float*)malloc(size * size * sizeof(float));
     float* mat_b = (float*)malloc(size * size * sizeof(float));
-    float* mat_res = (float*)calloc(size * size, sizeof(float));
 
     for (int i = 0; i < size * size; i++) {
         mat_a[i] = 1;
         mat_b[i] = 1;
     }
 
+    mat_res = (float*)calloc(size * size, sizeof(float));
     fr.write("Matrix multiplication using CPU\n");
     fr.write("Matrix Size: " + to_string(size) + "\n");
     fr.write(time_stats(mm_cpu(mat_a, mat_b, mat_res, size)));
+    printMat(mat_res, size);
+    free(mat_res);
 
+    mat_res = (float*)calloc(size * size, sizeof(float));
     fr.write("Matrix multiplication using GPU\n");
     fr.write("Matrix Size: " + to_string(size) + "\n");
     fr.write(time_stats(mm_gpu(mat_a, mat_b, mat_res, size)));
+    printMat(mat_res, size);
+    free(mat_res);
+
+    free(mat_a);
+    free(mat_b);
 
     half* mat_a_half = (half*)malloc(size * size * sizeof(half));
     half* mat_b_half = (half*)malloc(size * size * sizeof(half));
+
     for (int i = 0; i < size * size; i++) {
         mat_a_half[i] = __float2half(1);
         mat_b_half[i] = __float2half(1);
     }
 
+    mat_res = (float*)calloc(size * size, sizeof(float));
     fr.write("Matrix multiplication using Tensor\n");
     fr.write("Matrix Size: " + to_string(size) + "\n");
     fr.write(time_stats(mm_tensor(mat_a_half, mat_b_half, mat_res, size)));
+    printMat(mat_res, size);
+    free(mat_res);
+
+    free(mat_a_half);
+    free(mat_b_half);
+
+    // Convolution section
+    float* mat_start = (float*)malloc(size * size * sizeof(float));
+    float* mask = (float*)malloc(MASK_SIZE * MASK_SIZE * sizeof(float));
+
+    for (int i = 0; i < MASK_SIZE * MASK_SIZE; i++)
+        mask[i] = 1;
+
+    for (int i = 0; i < size * size; i++)
+        mat_start[i] = 1;
+
+    mat_res = (float*)calloc(size * size, sizeof(float));
+    fr.write("Convolution using CPU\n");
+    fr.write("Matrix Size: " + to_string(size) + "\n");
+    fr.write(time_stats(conv_cpu(mat_start, mask, mat_res, size)));
+    printMat(mat_res, size);
+    free(mat_res);
+
+    mat_res = (float*)calloc(size * size, sizeof(float));
+    fr.write("Convolution using GPU\n");
+    fr.write("Matrix Size: " + to_string(size) + "\n");
+    fr.write(time_stats(conv_gpu(mat_start, mask, mat_res, size)));
+    printMat(mat_res, size);
+    free(mat_res);
+
+    free(mat_start);
+    free(mask);
 
     return 0;
 }

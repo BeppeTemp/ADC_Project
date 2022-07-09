@@ -1,21 +1,35 @@
 Matrix multiplication using CPU
-Matrix Size: 500
+Matrix Size: 16
 Execution times:
-	* 74570.139001 μs
-	* 74.570139 ms
-	* 0.074570 s
+	* 282.599998 μs
+	* 0.282600 ms
+	* 0.000283 s
 
 Matrix multiplication using GPU
-Matrix Size: 500
+Matrix Size: 16
 Execution times:
-	* 409599.989653 μs
-	* 409.599990 ms
-	* 0.409600 s
+	* 16383.999959 μs
+	* 16.384000 ms
+	* 0.016384 s
 
 Matrix multiplication using Tensor
-Matrix Size: 500
+Matrix Size: 16
 Execution times:
-	* 76063.998044 μs
-	* 76.063998 ms
-	* 0.076064 s
+	* 7872.000337 μs
+	* 7.872000 ms
+	* 0.007872 s
+
+Convolution using CPU
+Matrix Size: 16
+Execution times:
+	* 275.117003 μs
+	* 0.275117 ms
+	* 0.000275 s
+
+Convolution using GPU
+Matrix Size: 16
+Execution times:
+	* 10239.999741 μs
+	* 10.240000 ms
+	* 0.010240 s
 

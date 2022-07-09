@@ -7,5 +7,11 @@
         "printoptions",
         "wtime"
     ],
-    "C_Cpp.errorSquiggles": "Enabled"
+    "C_Cpp.errorSquiggles": "Enabled",
+    "C_Cpp.intelliSenseEngineFallback": "Disabled",
+    "files.associations": {
+        "iostream": "cpp",
+        "bitset": "cpp",
+        "string_view": "cpp"
+    }
 }

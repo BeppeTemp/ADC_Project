@@ -3,17 +3,12 @@
 #include <mma.h>
 #include <iostream>
 
+#include "../include/matrix_op.cuh"
+
 using namespace nvcuda;
 
-#define BLOCK_DIM 32
-#define TILE_WIDTH 32
-
-#define WMMA_M 16
-#define WMMA_N 16
-#define WMMA_K 16
-
 // Kernels
-__global__ void tiled_kernel(float* mat_a, float* mat_b, float* res_mat, int size) {
+__global__ void mm_tiled_kernel(float* mat_a, float* mat_b, float* res_mat, int size) {
     int tx = threadIdx.x;
     int ty = threadIdx.y;
     int bx = blockIdx.x;
@@ -46,7 +41,7 @@ __global__ void tiled_kernel(float* mat_a, float* mat_b, float* res_mat, int siz
     int c = size * BLOCK_DIM * by + BLOCK_DIM * bx;
     res_mat[c + size * ty + tx] = temp;
 }
-__global__ void tensor_kernel(half* mat_a, half* mat_b, float* res_mat, int size) {
+__global__ void mm_tensor_kernel(half* mat_a, half* mat_b, float* res_mat, int size) {
     // Tile using a 2D grid
     int tile_row = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
     int tile_col = (blockIdx.y * blockDim.y + threadIdx.y);
@@ -119,7 +114,7 @@ double mm_gpu(float* mat_a, float* mat_b, float* mat_res, int size) {
     cudaEventCreate(&stop);
 
     cudaEventRecord(start);
-    tiled_kernel<<<gridDim, blockDim>>>(mat_a_dev, mat_b_dev, res_mat_dev, size);
+    mm_tiled_kernel<<<gridDim, blockDim>>>(mat_a_dev, mat_b_dev, res_mat_dev, size);
     cudaEventRecord(stop);
 
     cudaMemcpy(mat_res, res_mat_dev, size * size * sizeof(float), cudaMemcpyDeviceToHost);
@@ -157,7 +152,7 @@ double mm_tensor(half* mat_a, half* mat_b, float* mat_res, int size) {
     cudaEventCreate(&stop);
 
     cudaEventRecord(start);
-    tensor_kernel<<<gridDim, blockDim>>>(mat_a_dev, mat_b_dev, res_mat_dev, size);
+    mm_tensor_kernel<<<gridDim, blockDim>>>(mat_a_dev, mat_b_dev, res_mat_dev, size);
     cudaEventRecord(stop);
 
     cudaMemcpy(mat_res, res_mat_dev, size * size * sizeof(float), cudaMemcpyDeviceToHost);
