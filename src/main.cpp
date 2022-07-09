@@ -131,7 +131,7 @@ int main(int argc, char* argv[]) {
     }
     printf(").\n");
 
-    printMat(mat_res, size);
+    //printMat(mat_res, size);
     free(mat_res);
 
     mat_res = (float*)calloc(size * size, sizeof(float));

@@ -1,0 +1,35 @@
+Convolution using CPU
+Matrix Size: 32
+Execution times:
+	* 569.860000 μs
+	* 0.569860 ms
+	* 0.000570 s
+
+Convolution using GPU
+Matrix Size: 32
+Execution times:
+	* 20447.999239 μs
+	* 20.447999 ms
+	* 0.020448 s
+
+Matrix multiplication using CPU
+Matrix Size: 32
+Execution times:
+	* 214.031999 μs
+	* 0.214032 ms
+	* 0.000214 s
+
+Matrix multiplication using GPU
+Matrix Size: 32
+Execution times:
+	* 12223.999947 μs
+	* 12.224000 ms
+	* 0.012224 s
+
+Matrix multiplication using Tensor
+Matrix Size: 32
+Execution times:
+	* 10656.000115 μs
+	* 10.656000 ms
+	* 0.010656 s
+

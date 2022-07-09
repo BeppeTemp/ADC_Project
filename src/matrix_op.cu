@@ -6,8 +6,51 @@
 #include "../include/matrix_op.cuh"
 
 using namespace nvcuda;
+//Codice dell'indiano ganesh
+__global__ void mm_tiled_kernel(float * A, float * B, float * C,
+                                    int size)
+{
+    __shared__ float sA[BLOCK_DIM][BLOCK_DIM];   // Tile size to store elements in shared memory
+    __shared__ float sB[BLOCK_DIM][BLOCK_DIM];
 
+    int Row = blockDim.y*blockIdx.y + threadIdx.y; //To generate ids of threads.
+    int Col = blockDim.x*blockIdx.x + threadIdx.x;
+    float Cvalue = 0.0;
+    sA[threadIdx.y][threadIdx.x] = 0.0;
+    sB[threadIdx.y][threadIdx.x] = 0.0;
+
+    for (int k = 0; k < (((size - 1)/ BLOCK_DIM) + 1); k++)
+    {
+        if ( (Row < size) && (threadIdx.x + (k*BLOCK_DIM)) < size)//Copy Data to Tile from Matrix (Global Memory to Shared Memory)
+        {
+            sA[threadIdx.y][threadIdx.x] = A[(Row*size) + threadIdx.x + (k*BLOCK_DIM)];
+        }
+        else
+        {
+            sA[threadIdx.y][threadIdx.x] = 0.0;
+        }
+        if ( Col < size && (threadIdx.y + k*BLOCK_DIM) < size)//Copy Data to Tile from Matrix (Global Memory to Shared Memory)
+        {
+            sB[threadIdx.y][threadIdx.x] = B[(threadIdx.y + k*BLOCK_DIM)*size + Col];
+        }
+        else
+        {
+            sB[threadIdx.y][threadIdx.x] = 0.0;
+        }
+        __syncthreads();
+
+        for (int j = 0; j < BLOCK_DIM; ++j)//Multiplying Elements present in tile
+        {
+            Cvalue += sA[threadIdx.y][j] * sB[j][threadIdx.x];
+        }
+    }
+    if (Row < size && Col < size)//Saving Final result into Matrix C
+    {
+        C[Row*size + Col] = Cvalue;
+    }
+}
 // Kernels
+/* GPU codice nostro
 __global__ void mm_tiled_kernel(float* mat_a, float* mat_b, float* res_mat, int size) {
     __shared__ float m_a_sh[BLOCK_DIM][BLOCK_DIM];
     __shared__ float m_b_sh[BLOCK_DIM][BLOCK_DIM];
@@ -40,7 +83,7 @@ __global__ void mm_tiled_kernel(float* mat_a, float* mat_b, float* res_mat, int 
 
     int c = size * BLOCK_DIM * by + BLOCK_DIM * bx;
     res_mat[c + size * ty + tx] = temp;
-}
+}*/
 __global__ void mm_tensor_kernel(half* mat_a, half* mat_b, float* res_mat, int size) {
     // Tile using a 2D grid
     int tile_row = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
@@ -83,10 +126,11 @@ __global__ void mm_tensor_kernel(half* mat_a, half* mat_b, float* res_mat, int s
 double mm_cpu(float* mat_a, float* mat_b, float* mat_res, int size) {
     double t_init = omp_get_wtime();
 
-#pragma omp parallel for collapse(3)
+//Loop interchange tra k_row e mat_col
+//#pragma omp parallel for collapse(3)
     for (int mat_row = 0; mat_row < size; mat_row++)
-        for (int mat_col = 0; mat_col < size; mat_col++)
             for (int k_row = 0; k_row < size; k_row++)
+        for (int mat_col = 0; mat_col < size; mat_col++)
                 mat_res[mat_row * size + mat_col] += mat_a[mat_row * size + k_row] * mat_b[k_row * size + mat_col];
 
     return omp_get_wtime() - t_init;
@@ -167,10 +211,10 @@ double mm_tensor(half* mat_a, half* mat_b, float* mat_res, int size) {
     return elapsed;
 }
 
-// Matrix Checker
+// Matrix Checker, abbiamo sostituito mat_res[i]!=16 con !=size
 bool mm_checker(float* mat_res, int size) {
     for (int i = 0; i < size * size; i++)
-        if (mat_res[i] != 16)
+        if (mat_res[i] != size)
             return false;
     return true;
 }
