@@ -17,7 +17,26 @@ void time_stats(float micro_seconds) {
     printf("\n");
 }
 
+void printMat(float* mat, int size) {
+    // Print the entire matrix
+    printf("\n");
+    for (int i = 0; i < (size * size); i++) {
+        printf("|");
+        printf("%05.2f", mat[i]);
+        if (((i + 1) % (size) == 0) && (i != 0))
+            printf("|\n");
+        if ((size * size) == 1)
+            printf("|\n");
+        if (size == 1 && ((i == 0)))
+            printf("|\n");
+    }
+    printf("\n");
+}
+
 __global__ void MatrixMulKernelTiled(float* mat_a, float* mat_b, float* res_mat, int size) {
+    __shared__ float m_a_sh[BLOCK_DIM][BLOCK_DIM];
+    __shared__ float m_b_sh[BLOCK_DIM][BLOCK_DIM];
+
     int tx = threadIdx.x;
     int ty = threadIdx.y;
     int bx = blockIdx.x;
@@ -25,15 +44,13 @@ __global__ void MatrixMulKernelTiled(float* mat_a, float* mat_b, float* res_mat,
 
     int mat_a_begin = size * BLOCK_DIM * by;
     int mat_a_end = mat_a_begin + size - 1;
-    int mat_b_begin = BLOCK_DIM * bx;
+    int mat_a_step = BLOCK_DIM;
 
+    int mat_b_begin = BLOCK_DIM * bx;
     int mat_b_step = BLOCK_DIM * size;
 
     float temp = 0;
-    for (int a = mat_a_begin, b = mat_b_begin; a <= mat_a_end; a += BLOCK_DIM, b += mat_b_step) {
-        __shared__ float m_a_sh[BLOCK_DIM][BLOCK_DIM];
-        __shared__ float m_b_sh[BLOCK_DIM][BLOCK_DIM];
-
+    for (int a = mat_a_begin, b = mat_b_begin; a <= mat_a_end; a += mat_a_step, b += mat_b_step) {
         m_a_sh[ty][tx] = mat_a[a + size * ty + tx];
         m_b_sh[ty][tx] = mat_b[b + size * ty + tx];
 
@@ -47,12 +64,14 @@ __global__ void MatrixMulKernelTiled(float* mat_a, float* mat_b, float* res_mat,
         __syncthreads();
     }
 
+    printf("temp: %f\n", temp);
+
     int c = size * BLOCK_DIM * by + BLOCK_DIM * bx;
     res_mat[c + size * ty + tx] = temp;
 }
 
 int main(void) {
-    int sizes[5] = {1024, 2048, 4096, 8192, 16384};
+    int sizes[5] = {16, 16, 16, 16, 16};
 
     float *mat_a_host, *mat_b_host, *mat_res_host_gpu;
     float *mat_a_dev, *mat_b_dev, *mat_res_dev;
@@ -92,6 +111,8 @@ int main(void) {
         cudaEventRecord(stop);
 
         cudaMemcpy(mat_res_host_gpu, mat_res_dev, nBytes, cudaMemcpyDeviceToHost);
+
+        printMat(mat_res_host_gpu, sizes[i]);
 
         bool check = true;
         for (int k = 0; k < sizes[i] * sizes[i]; k++) {
