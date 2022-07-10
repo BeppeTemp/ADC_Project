@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
 
     File_Report fr;
 
-    int sizes[N_TEST] = {1024/*, 2048, 4096, 8192, 16384*/};
+    int sizes[N_TEST] = {1024, 2048, 4096, 8192, 16384};
 
     for (int k = 0; k < N_TEST; k++)
     {
