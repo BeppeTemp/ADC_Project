@@ -1,5 +1,5 @@
 CC = nvcc
-CFLAGS = -I/$(IDIR) -lboost_program_options -Xcompiler -fopenmp -gencode=arch=compute_75,code=sm_75
+CFLAGS = -I/$(IDIR) -lboost_program_options -Xcompiler -fopenmp -gencode=arch=compute_75,code=sm_75 -Xcompiler -O3
 
 ODIR = src
 IDIR = include

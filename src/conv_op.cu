@@ -10,8 +10,8 @@ __global__ void conv_kernel(float* mat_start, const float* mask, float* mat_res,
     int ty = threadIdx.y;
 
     // Coordinate result
-    int row_o = ty+blockIdx.x*TILE_WIDTH;
-    int col_o = tx+blockIdx.x * TILE_WIDTH ;
+    int row_o = ty + blockIdx.x * TILE_WIDTH;
+    int col_o = tx + blockIdx.x * TILE_WIDTH;
 
     // Coordinate start
     int row_i = row_o - MASK_CENTER;
@@ -25,17 +25,16 @@ __global__ void conv_kernel(float* mat_start, const float* mask, float* mat_res,
         n_ds[ty][tx] = mat_start[(row_i * mat_size) + col_i];
     }
 
-     __syncthreads();
+    __syncthreads();
 
     // Convolution calculation
     float output = 0.0f;
     if (ty < TILE_WIDTH && tx < TILE_WIDTH) {
-        for (int i = 0; i < MASK_SIZE; i++) 
-            for (int j = 0; j < MASK_SIZE; j++) 
+        for (int i = 0; i < MASK_SIZE; i++)
+            for (int j = 0; j < MASK_SIZE; j++)
                 output += mask[(i * MASK_SIZE) + j] * n_ds[i + ty][j + tx];
-            
-        
-        if (row_o < mat_size && col_o < mat_size) {      
+
+        if (row_o < mat_size && col_o < mat_size) {
             mat_res[row_o * mat_size + col_o] = output;
         }
     }
@@ -45,9 +44,9 @@ __global__ void conv_kernel(float* mat_start, const float* mask, float* mat_res,
 double conv_cpu(float* mat_start, float* mask, float* mat_res, int mat_size) {
     double t_init = omp_get_wtime();
 
-    #pragma omp parallel for
+#pragma omp parallel for
     for (int mat_row = 0; mat_row < mat_size; mat_row++)
-    #pragma omp parallel for
+#pragma omp parallel for
         for (int mat_col = 0; mat_col < mat_size; mat_col++)
             for (int k_row = 0; k_row < MASK_SIZE; k_row++)
                 for (int k_col = 0; k_col < MASK_SIZE; k_col++) {
@@ -100,10 +99,10 @@ double conv_gpu(float* mat_start, float* mask, float* mat_res, int mat_size) {
 }
 
 // Matrix Checker
-bool conv_checker(float* mat_a, float* mat_b, int size){
+bool conv_checker(float* mat_a, float* mat_b, int size) {
     for (int i = 0; i < size * size; i++)
-        if (mat_a[i] != mat_b[i]){
-             std::cout << "Error at index " << i << ": " << mat_a[i] << " != " << mat_b[i] << std::endl;
+        if (mat_a[i] != mat_b[i]) {
+            std::cout << "Error at index " << i << ": " << mat_a[i] << " != " << mat_b[i] << std::endl;
             return false;
         }
     return true;

@@ -1,0 +1,165 @@
+Starting test 1 size 32
+----------------------------------------------------
+Convolution using CPU
+Execution times:
+	* 1774.918600 μs
+	* 1.774919 ms
+	* 0.001775 s
+
+Convolution using GPU
+Execution times:
+	* 10796.799883 μs
+	* 10.796800 ms
+	* 0.010797 s
+
+Matrix Multiplication using CPU
+Execution times:
+	* 56.013400 μs
+	* 0.056013 ms
+	* 0.000056 s
+
+Matrix Multiplication using GPU
+Execution times:
+	* 8652.799949 μs
+	* 8.652800 ms
+	* 0.008653 s
+
+Matrix Multiplication using Tensor
+Execution times:
+	* 7411.199994 μs
+	* 7.411200 ms
+	* 0.007411 s
+
+
+Starting test 2 size 32
+----------------------------------------------------
+Convolution using CPU
+Execution times:
+	* 167.768600 μs
+	* 0.167769 ms
+	* 0.000168 s
+
+Convolution using GPU
+Execution times:
+	* 9126.400016 μs
+	* 9.126400 ms
+	* 0.009126 s
+
+Matrix Multiplication using CPU
+Execution times:
+	* 14.170400 μs
+	* 0.014170 ms
+	* 0.000014 s
+
+Matrix Multiplication using GPU
+Execution times:
+	* 8236.799948 μs
+	* 8.236800 ms
+	* 0.008237 s
+
+Matrix Multiplication using Tensor
+Execution times:
+	* 6707.200129 μs
+	* 6.707200 ms
+	* 0.006707 s
+
+
+Starting test 3 size 32
+----------------------------------------------------
+Convolution using CPU
+Execution times:
+	* 602.184200 μs
+	* 0.602184 ms
+	* 0.000602 s
+
+Convolution using GPU
+Execution times:
+	* 9363.199957 μs
+	* 9.363200 ms
+	* 0.009363 s
+
+Matrix Multiplication using CPU
+Execution times:
+	* 5.135400 μs
+	* 0.005135 ms
+	* 0.000005 s
+
+Matrix Multiplication using GPU
+Execution times:
+	* 8710.400015 μs
+	* 8.710400 ms
+	* 0.008710 s
+
+Matrix Multiplication using Tensor
+Execution times:
+	* 7270.400040 μs
+	* 7.270400 ms
+	* 0.007270 s
+
+
+Starting test 4 size 32
+----------------------------------------------------
+Convolution using CPU
+Execution times:
+	* 287.643600 μs
+	* 0.287644 ms
+	* 0.000288 s
+
+Convolution using GPU
+Execution times:
+	* 9996.799938 μs
+	* 9.996800 ms
+	* 0.009997 s
+
+Matrix Multiplication using CPU
+Execution times:
+	* 72.358000 μs
+	* 0.072358 ms
+	* 0.000072 s
+
+Matrix Multiplication using GPU
+Execution times:
+	* 13664.000109 μs
+	* 13.664000 ms
+	* 0.013664 s
+
+Matrix Multiplication using Tensor
+Execution times:
+	* 11340.799741 μs
+	* 11.340800 ms
+	* 0.011341 s
+
+
+Starting test 5 size 32
+----------------------------------------------------
+Convolution using CPU
+Execution times:
+	* 22.051400 μs
+	* 0.022051 ms
+	* 0.000022 s
+
+Convolution using GPU
+Execution times:
+	* 10137.599893 μs
+	* 10.137600 ms
+	* 0.010138 s
+
+Matrix Multiplication using CPU
+Execution times:
+	* 4.809200 μs
+	* 0.004809 ms
+	* 0.000005 s
+
+Matrix Multiplication using GPU
+Execution times:
+	* 9951.999970 μs
+	* 9.952000 ms
+	* 0.009952 s
+
+Matrix Multiplication using Tensor
+Execution times:
+	* 8204.799891 μs
+	* 8.204800 ms
+	* 0.008205 s
+
+
