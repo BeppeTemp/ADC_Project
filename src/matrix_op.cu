@@ -81,7 +81,7 @@ __global__ void mm_tensor_kernel(half* mat_a, half* mat_b, float* res_mat, int s
 double mm_cpu(float* mat_a, float* mat_b, float* mat_res, int size) {
     double t_init = omp_get_wtime();
 
-    #pragma omp parallel for
+    /*#pragma omp parallel for
     for (int ih = 0; ih < size; ih += TILE_CPU)
         #pragma omp parallel for
         for (int jh = 0; jh < size; jh += TILE_CPU)
@@ -90,7 +90,14 @@ double mm_cpu(float* mat_a, float* mat_b, float* mat_res, int size) {
                     for (int kl = 0; kl < TILE_CPU; kl++)
                         for (int jl = 0; jl < TILE_CPU; jl++)
                             mat_res[(ih + il) * TILE_CPU + (jh + jl)] += mat_a[(ih + il) * TILE_CPU + (kh + kl)] * mat_b[(kh + kl) * TILE_CPU + (jh + jl)];
-
+*/
+    for (int m = 0; m < size; m++) {
+        for (int k = 0; k < size; k++) {
+            for (int n = 0; n < size; n++) {
+                mat_res[m * size + n] += mat_a[m * size + k] * mat_b[k *size + n];
+            }
+        }
+    }
     return omp_get_wtime() - t_init;
 }
 double mm_gpu(float* mat_a, float* mat_b, float* mat_res, int size) {

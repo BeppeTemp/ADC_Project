@@ -8,6 +8,7 @@
 #define BLOCK_DIM 32
 #define TILE_WIDTH 32
 
+
 double conv_cpu(float* mat_start, float* mask, float* mat_res, int mat_size);
 double conv_gpu(float* mat_start, float* mask, float* mat_res, int mat_size);
 
