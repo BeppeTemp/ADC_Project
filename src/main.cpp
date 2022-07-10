@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
 
     // int sizes[N_TEST] = {1024, 2048, 4096, 8192, 16384};
      //int sizes[N_TEST] = {1024, 2048, 1024, 2048, 1024};
-    int sizes[N_TEST] = {32,32,32,32,32};
+    int sizes[N_TEST] = {32,8,8,8,8};
 
     for (int k = 0; k < N_TEST; k++) {
         printf("Starting test %d size %d\n", k + 1, sizes[k]);

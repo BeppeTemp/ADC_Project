@@ -22,19 +22,19 @@ __global__ void conv_kernel(float* mat_start, const float* mask, float* mat_res,
     //__shared__ float n_ds[BLOCK_DIM][BLOCK_DIM];
     
     // Tile cooperative upload
-    if ((row_i >= 0) && (row_i < mat_size) && (col_i >= 0) && (col_i < mat_size)) 
-        n_ds[ty][tx] = mat_start[(row_i * mat_size) + col_i];
+    if (row_i >= 0 && row_i < mat_size && col_i >= 0 && col_i < mat_size) 
+        n_ds[ty][tx] = mat_start[row_i * mat_size + col_i];
     else
         n_ds[ty][tx]=0.0f;
 
     __syncthreads();
 
     // Convolution calculation
+    if (tx< TILE_WIDTH && ty < TILE_WIDTH) {
     float output = 0.0f;
-    if (ty < TILE_WIDTH && tx < TILE_WIDTH) {
         for (int i = 0; i < MASK_SIZE; i++)
             for (int j = 0; j < MASK_SIZE; j++)
-                output += mask[(i * MASK_SIZE) + j] * n_ds[i + ty][j + tx];
+                output += mask[i * MASK_SIZE + j] * n_ds[i + ty][j + tx];
 
         if (row_o < mat_size && col_o < mat_size) {
             mat_res[row_o * mat_size + col_o] = output;
@@ -103,10 +103,14 @@ double conv_gpu(float* mat_start, float* mask, float* mat_res, int mat_size) {
 
 // Matrix Checker
 bool conv_checker(float* mat_a, float* mat_b, int size) {
-    for (int i = 0; i < size * size; i++)
+    /*for (int i = 0; i < size * size; i++)
         if (mat_a[i] != mat_b[i]) {
             std::cout << "Error at index " << i << ": " << mat_a[i] << " != " << mat_b[i] << std::endl;
             return false;
         }
+    return true;*/
+    for (unsigned i = 0; i < size*size; i++)
+        if (abs(mat_a[i] - mat_b[i]) > 0.001f)
+            return false;
     return true;
 }
