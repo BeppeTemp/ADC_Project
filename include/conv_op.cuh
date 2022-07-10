@@ -5,7 +5,7 @@
 #define MASK_SIZE 5
 #define MASK_CENTER 2
 
-#define BLOCK_DIM 32
+#define BLOCK_DIM 32w
 #define TILE_WIDTH 32
 
 double conv_cpu(float* mat_start, float* mask, float* mat_res, int mat_size);

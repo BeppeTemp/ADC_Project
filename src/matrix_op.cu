@@ -82,13 +82,14 @@ double mm_cpu(float* mat_a, float* mat_b, float* mat_res, int size) {
     double t_init = omp_get_wtime();
 
     #pragma omp parallel for
-    for (int m = 0; m < size; m++) {
-        for (int k = 0; k < size; k++) {
-            for (int n = 0; n < size; n++) {
-                mat_res[m * size + n] += mat_a[m * size + k] * mat_b[k *size + n];
-            }
-        }
-    }
+    for (int col_chunk = 0; col_chunk < size; col_chunk += 16)
+        #pragma omp parallel for collapse(2)
+        for (int row = 0; row < size; row++)
+            for (int tile = 0; tile < size; tile += 16)
+                for (int tile_row = 0; tile_row < 16; tile_row++)
+                    for (int idx = 0; idx < 16; idx++)
+                        mat_res[row * size + col_chunk + idx] += mat_a[row * size + tile + tile_row] * mat_b[tile * size + tile_row * size + col_chunk + idx];
+
     return omp_get_wtime() - t_init;
 }
 double mm_gpu(float* mat_a, float* mat_b, float* mat_res, int size) {

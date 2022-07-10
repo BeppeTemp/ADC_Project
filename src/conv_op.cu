@@ -44,9 +44,9 @@ __global__ void conv_kernel(float* mat_start, const float* mask, float* mat_res,
 double conv_cpu(float* mat_start, float* mask, float* mat_res, int mat_size) {
     double t_init = omp_get_wtime();
 
-#pragma omp parallel for
+    #pragma omp parallel for
     for (int mat_row = 0; mat_row < mat_size; mat_row++)
-#pragma omp parallel for
+        #pragma omp parallel for
         for (int mat_col = 0; mat_col < mat_size; mat_col++)
             for (int k_row = 0; k_row < MASK_SIZE; k_row++)
                 for (int k_col = 0; k_col < MASK_SIZE; k_col++) {

@@ -30,7 +30,7 @@
     {
       "type": "shell",
       "label": "C Compile and Run (Standard)",
-      "command": "gcc -g ${fileDirname}/${fileBasename} -o ${fileBasenameNoExtension}.out && ./${fileBasenameNoExtension}.out && rm ${fileBasenameNoExtension}.out",
+      "command": "gcc -lmgl -g ${fileDirname}/${fileBasename} -o ${fileBasenameNoExtension}.out && ./${fileBasenameNoExtension}.out && rm ${fileBasenameNoExtension}.out",
       "presentation": {
         "reveal": "always"
       },
