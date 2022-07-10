@@ -81,34 +81,14 @@ __global__ void mm_tensor_kernel(half* mat_a, half* mat_b, float* res_mat, int s
 double mm_cpu(float* mat_a, float* mat_b, float* mat_res, int size) {
     double t_init = omp_get_wtime();
 
-    const int block_size = TILE_CPU / sizeof(float);
-
-    for (int i0 = 0; i0 < size; i0 += block_size) {
-        int imax = i0 + block_size > size ? size : i0 + block_size;
-
-        for (int j0 = 0; j0 < size; j0 += block_size) {
-            int jmax = j0 + block_size > size ? size : j0 + block_size;
-
-            for (int k0 = 0; k0 < size; k0 += block_size) {
-                int kmax = k0 + block_size > size ? size : k0 + block_size;
-
-                for (int j1 = j0; j1 < jmax; ++j1) {
-                    int sj = size * j1;
-
-                    for (int i1 = i0; i1 < imax; ++i1) {
-                        int mi = size * i1;
-                        int ki = size * i1;
-                        int kij = ki + j1;
-
-                        for (int k1 = k0; k1 < kmax; ++k1) {
-                            mat_res[kij] += mat_a[mi + k1] * mat_b[sj + k1];
-                        }
-                    }
-                }
+    #pragma omp parallel for
+    for (int m = 0; m < size; m++) {
+        for (int k = 0; k < size; k++) {
+            for (int n = 0; n < size; n++) {
+                mat_res[m * size + n] += mat_a[m * size + k] * mat_b[k *size + n];
             }
         }
     }
-
     return omp_get_wtime() - t_init;
 }
 double mm_gpu(float* mat_a, float* mat_b, float* mat_res, int size) {

@@ -10,8 +10,8 @@ __global__ void conv_kernel(float* mat_start, const float* mask, float* mat_res,
     int ty = threadIdx.y;
 
     // Coordinate result
-    int row_o = blockIdx.y * TILE_WIDTH + ty;
-    int col_o = blockIdx.x * TILE_WIDTH + tx;
+    int row_o = ty+blockIdx.x*TILE_WIDTH;
+    int col_o = tx+blockIdx.x * TILE_WIDTH ;
 
     // Coordinate start
     int row_i = row_o - MASK_CENTER;
@@ -30,11 +30,11 @@ __global__ void conv_kernel(float* mat_start, const float* mask, float* mat_res,
     // Convolution calculation
     float output = 0.0f;
     if (ty < TILE_WIDTH && tx < TILE_WIDTH) {
-        for (int i = 0; i < MASK_SIZE; i++) {
-            for (int j = 0; j < MASK_SIZE; j++) {
+        for (int i = 0; i < MASK_SIZE; i++) 
+            for (int j = 0; j < MASK_SIZE; j++) 
                 output += mask[(i * MASK_SIZE) + j] * n_ds[i + ty][j + tx];
-            }
-        }
+            
+        
         if (row_o < mat_size && col_o < mat_size) {      
             mat_res[row_o * mat_size + col_o] = output;
         }
@@ -103,7 +103,7 @@ double conv_gpu(float* mat_start, float* mask, float* mat_res, int mat_size) {
 bool conv_checker(float* mat_a, float* mat_b, int size){
     for (int i = 0; i < size * size; i++)
         if (mat_a[i] != mat_b[i]){
-            // std::cout << "Error at index " << i << ": " << mat_a[i] << " != " << mat_b[i] << std::endl;
+             std::cout << "Error at index " << i << ": " << mat_a[i] << " != " << mat_b[i] << std::endl;
             return false;
         }
     return true;
