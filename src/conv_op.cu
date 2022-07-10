@@ -102,7 +102,9 @@ double conv_gpu(float* mat_start, float* mask, float* mat_res, int mat_size) {
 // Matrix Checker
 bool conv_checker(float* mat_a, float* mat_b, int size){
     for (int i = 0; i < size * size; i++)
-        if (mat_a[i] != mat_b[i])
+        if (mat_a[i] != mat_b[i]){
+            // std::cout << "Error at index " << i << ": " << mat_a[i] << " != " << mat_b[i] << std::endl;
             return false;
+        }
     return true;
 }

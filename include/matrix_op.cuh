@@ -6,6 +6,8 @@
 #define BLOCK_DIM 32
 #define TILE_WIDTH 32
 
+#define TILE_CPU 64
+
 #define WMMA_M 16
 #define WMMA_N 16
 #define WMMA_K 16
