@@ -19,11 +19,13 @@ __global__ void conv_kernel(float* mat_start, const float* mask, float* mat_res,
 
     // Tile in shared memory
     __shared__ float n_ds[TILE_WIDTH + MASK_SIZE * MASK_SIZE - 1][TILE_WIDTH + MASK_SIZE * MASK_SIZE - 1];
-
+    //__shared__ float n_ds[BLOCK_DIM][BLOCK_DIM];
+    
     // Tile cooperative upload
-    if ((row_i >= 0) && (row_i < mat_size) && (col_i >= 0) && (col_i < mat_size)) {
+    if ((row_i >= 0) && (row_i < mat_size) && (col_i >= 0) && (col_i < mat_size)) 
         n_ds[ty][tx] = mat_start[(row_i * mat_size) + col_i];
-    }
+    else
+        n_ds[ty][tx]=0.0f;
 
     __syncthreads();
 
@@ -40,13 +42,15 @@ __global__ void conv_kernel(float* mat_start, const float* mask, float* mat_res,
     }
 }
 
+
+
 // Functions
 double conv_cpu(float* mat_start, float* mask, float* mat_res, int mat_size) {
     double t_init = omp_get_wtime();
 
-#pragma omp parallel for
+    #pragma omp parallel for
     for (int mat_row = 0; mat_row < mat_size; mat_row++)
-#pragma omp parallel for
+    #pragma omp parallel for
         for (int mat_col = 0; mat_col < mat_size; mat_col++)
             for (int k_row = 0; k_row < MASK_SIZE; k_row++)
                 for (int k_col = 0; k_col < MASK_SIZE; k_col++) {
@@ -57,8 +61,7 @@ double conv_cpu(float* mat_start, float* mask, float* mat_res, int mat_size) {
                         mat_res[(mat_row * mat_size) + mat_col] += mat_start[(rel_row * mat_size) + rel_col] * mask[(k_row * MASK_SIZE) + k_col];
                     }
                 }
-
-    return omp_get_wtime() - t_init;
+return omp_get_wtime() - t_init;
 }
 double conv_gpu(float* mat_start, float* mask, float* mat_res, int mat_size) {
     float *mat_start_dev, *mask_dev, *mat_res_dev;
