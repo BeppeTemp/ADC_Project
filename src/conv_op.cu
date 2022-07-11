@@ -20,18 +20,18 @@ __global__ void conv_kernel(float* mat_start, const float* mask, float* mat_res,
     // Tile in shared memory
     __shared__ float n_ds[TILE_WIDTH + MASK_SIZE * MASK_SIZE - 1][TILE_WIDTH + MASK_SIZE * MASK_SIZE - 1];
     //__shared__ float n_ds[BLOCK_DIM][BLOCK_DIM];
-    
+
     // Tile cooperative upload
-    if (row_i >= 0 && row_i < mat_size && col_i >= 0 && col_i < mat_size) 
+    if (row_i >= 0 && row_i < mat_size && col_i >= 0 && col_i < mat_size)
         n_ds[ty][tx] = mat_start[row_i * mat_size + col_i];
     else
-        n_ds[ty][tx]=0.0f;
+        n_ds[ty][tx] = 0.0f;
 
     __syncthreads();
 
     // Convolution calculation
-    if (tx< TILE_WIDTH && ty < TILE_WIDTH) {
-    float output = 0.0f;
+    if (tx < TILE_WIDTH && ty < TILE_WIDTH) {
+        float output = 0.0f;
         for (int i = 0; i < MASK_SIZE; i++)
             for (int j = 0; j < MASK_SIZE; j++)
                 output += mask[i * MASK_SIZE + j] * n_ds[i + ty][j + tx];
@@ -42,15 +42,13 @@ __global__ void conv_kernel(float* mat_start, const float* mask, float* mat_res,
     }
 }
 
-
-
 // Functions
 double conv_cpu(float* mat_start, float* mask, float* mat_res, int mat_size) {
     double t_init = omp_get_wtime();
 
-    #pragma omp parallel for
+#pragma omp parallel for
     for (int mat_row = 0; mat_row < mat_size; mat_row++)
-        #pragma omp parallel for
+#pragma omp parallel for
         for (int mat_col = 0; mat_col < mat_size; mat_col++)
             for (int k_row = 0; k_row < MASK_SIZE; k_row++)
                 for (int k_col = 0; k_col < MASK_SIZE; k_col++) {
@@ -61,7 +59,7 @@ double conv_cpu(float* mat_start, float* mask, float* mat_res, int mat_size) {
                         mat_res[(mat_row * mat_size) + mat_col] += mat_start[(rel_row * mat_size) + rel_col] * mask[(k_row * MASK_SIZE) + k_col];
                     }
                 }
-return omp_get_wtime() - t_init;
+    return omp_get_wtime() - t_init;
 }
 double conv_gpu(float* mat_start, float* mask, float* mat_res, int mat_size) {
     float *mat_start_dev, *mask_dev, *mat_res_dev;
@@ -99,18 +97,4 @@ double conv_gpu(float* mat_start, float* mask, float* mat_res, int mat_size) {
     cudaFree(mat_res_dev);
 
     return elapsed;
-}
-
-// Matrix Checker
-bool conv_checker(float* mat_a, float* mat_b, int size) {
-    /*for (int i = 0; i < size * size; i++)
-        if (mat_a[i] != mat_b[i]) {
-            std::cout << "Error at index " << i << ": " << mat_a[i] << " != " << mat_b[i] << std::endl;
-            return false;
-        }
-    return true;*/
-    for (unsigned i = 0; i < size*size; i++)
-        if (abs(mat_a[i] - mat_b[i]) > 0.001f)
-            return false;
-    return true;
 }

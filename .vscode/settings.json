@@ -15,6 +15,9 @@
         "string_view": "cpp",
         "array": "cpp",
         "initializer_list": "cpp",
-        "utility": "cpp"
-    }
+        "utility": "cpp",
+        "fstream": "cpp"
+    },
+    "C_Cpp.vcFormat.indent.preprocessor": "none",
+    "C_Cpp.formatting": "vcFormat"
 }

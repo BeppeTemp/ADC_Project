@@ -4,11 +4,6 @@
 #include <fstream>
 #include <iostream>
 
-#define PRINT_GREEN(str) printf("\x1b[32m%s\x1b[0m", str);
-#define PRINT_RED(str) printf("\x1b[31m%s\x1b[0m", str);
-
-#define N_TEST 5
-
 #include "../include/conv_op.cuh"
 #include "../include/matrix_op.cuh"
 
@@ -17,7 +12,7 @@ using namespace std;
 
 // Report file object
 class File_Report {
-   public:
+public:
     ofstream report;
     File_Report() { report.open("Report.txt"); }
     void write(string str) { report << str; }
@@ -41,47 +36,67 @@ void printMat(float* mat, int size) {
     printf("\n");
 }
 string time_stats(double seconds) {
-    return string("Execution times:\n") + string("\t* ") + to_string(seconds * 1000 * 1000) + string(" μs\n") + string("\t* ") + to_string(seconds * 1000) + string(" ms\n") + string("\t* ") + to_string(seconds) + string(" s\n") + string("\n");
+    return string("Execution times ⏱: \n") + string("\t🔹 ") + to_string(seconds * 1000 * 1000) + string(" μs\n") + string("\t🔹 ") +
+        to_string(seconds * 1000) + string(" ms\n") + string("\t🔹 ") + to_string(seconds) + string(" s\n") + string("\n");
 }
 
 int main(int argc, char* argv[]) {
-    // options_description desc("Allowed options");
-    // desc.add_options()("help", "produce help message")("size", value<int>()->required(), "set size of matrix");
+    bool cpu_flag;
+    bool gpu_flag;
+    bool tensor_flag;
 
-    // try {
-    //     variables_map vm;
-    //     store(parse_command_line(argc, argv, desc), vm);
-    //     notify(vm);
+    int n_test;
 
-    //     if (vm.count("help")) {
-    //         cout << desc << "\n";
-    //         return 1;
-    //     }
+    options_description desc("Allowed options");
+    desc.add_options()
+        ("help", "Produce help message.")
+        ("exclude-cpu,c", bool_switch()->default_value(false), "Exclude CPU tests.")
+        ("exclude-gpu,g", bool_switch()->default_value(false), "Exclude GPU tests.")
+        ("exclude-tensor,t", bool_switch()->default_value(false), "Exclude MMA tests.")
+        ("iteration,i", value<int>()->default_value(5), "Set iteration number for avg calculation.");
 
-    //     size = vm["size"].as<int>();
-    // } catch (const std::exception& e) {
-    //     std::cerr << e.what() << std::endl;
-    //     return 1;
-    // }
+    variables_map vm;
+    store(parse_command_line(argc, argv, desc), vm);
+    try {
+        notify(vm);
+
+        if (vm.count("help")) {
+            cout << desc << "\n";
+            return 1;
+        }
+
+        cpu_flag = vm["exclude-cpu"].as<bool>();
+        gpu_flag = vm["exclude-gpu"].as<bool>();
+        tensor_flag = vm["exclude-tensor"].as<bool>();
+
+        n_test = vm["iteration"].as<int>();
+    }
+    catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+        return 1;
+    }
 
     File_Report fr;
 
-    int sizes[N_TEST] = {1024, 2048, 4096, 8192, 16384};
-    // int sizes[N_TEST] = {1024, 2048, 1024, 2048, 1024};
-    // int sizes[N_TEST] = {32, 32, 32, 32, 32};
+    int sizes[5] = {1024, 2048, 4096, 8192, 16384};
+    // int sizes[5] = {1024, 1024, 1024, 1024, 1024};
+    // int sizes[5] = { 32, 32, 32, 32, 32 };
 
-    for (int k = 0; k < N_TEST; k++) {
-        printf("Starting test %d size %d\n", k + 1, sizes[k]);
-        printf("----------------------------------------------------\n");
+    for (int k = 0; k < 5; k++) {
+        printf("-------------------------------------------------------------\n");
+        printf("\t\tℹ️  Starting test %d size %d ℹ️\n", k + 1, sizes[k]);
+        printf("-------------------------------------------------------------\n");
 
-        fr.write("Starting test " + to_string(k + 1) + " size " + to_string(sizes[k]) + "\n");
-        fr.write("----------------------------------------------------\n");
+        fr.write("---------------------------------------\n");
+        fr.write("\tℹ️ Result test " + to_string(k + 1) + " (size " + to_string(sizes[k]) + ") ℹ️\n");
+        fr.write("---------------------------------------\n");
 
         float* mat_res;
 
         // -------------------------------
         // Convolution section
         // -------------------------------
+
         float* mat_start = (float*)malloc(sizes[k] * sizes[k] * sizeof(float));
         float* mask = (float*)malloc(MASK_SIZE * MASK_SIZE * sizeof(float));
 
@@ -92,40 +107,45 @@ int main(int argc, char* argv[]) {
         for (int i = 0; i < sizes[k] * sizes[k]; i++)
             mat_start[i] = 1;
 
+        #pragma omp parallel for
         for (int i = 0; i < MASK_SIZE * MASK_SIZE; i++)
             mask[i] = 1;
 
-        for (int i = 0; i < N_TEST; i++) {
-            // Convolution on CPU
-            float* mat_res_cpu = (float*)calloc(sizes[k] * sizes[k], sizeof(float));
-            conv_avg_cpu += conv_cpu(mat_start, mask, mat_res_cpu, sizes[k]);
+        // Convolution on CPU
+        if (!cpu_flag) {
+            for (int i = 0; i < n_test; i++) {
+                float* mat_res_cpu = (float*)calloc(sizes[k] * sizes[k], sizeof(float));
+                conv_avg_cpu += conv_cpu(mat_start, mask, mat_res_cpu, sizes[k]);
 
-            // Convolution on GPU
-            float* mat_res_gpu = (float*)calloc(sizes[k] * sizes[k], sizeof(float));
-            conv_avg_gpu += conv_gpu(mat_start, mask, mat_res_gpu, sizes[k]);
-
-            printf("Convolution CPU & GPU interation %d completed, result: ", i + 1);
-
-            if (conv_checker(mat_res_cpu, mat_res_gpu, sizes[k])) {
-                PRINT_GREEN("Correct");
-            } else {
-                PRINT_RED("Incorrect");
+                printf("Convolution CPU interation %d ✅\n", i + 1);
+                free(mat_res_cpu);
             }
             printf("\n");
-            // printMat(mat_res_cpu, sizes[k]);
-            // printMat(mat_res_gpu, sizes[k]);
-            free(mat_res_cpu);
-            free(mat_res_gpu);
         }
-        printf("\n");
 
-        conv_avg_cpu /= N_TEST;
-        conv_avg_gpu /= N_TEST;
+        // Convolution on GPU
+        if (!gpu_flag) {
+            for (int i = 0; i < n_test; i++) {
+                float* mat_res_gpu = (float*)calloc(sizes[k] * sizes[k], sizeof(float));
+                conv_avg_gpu += conv_gpu(mat_start, mask, mat_res_gpu, sizes[k]);
 
-        fr.write("Convolution using CPU\n");
-        fr.write(time_stats(conv_avg_cpu));
-        fr.write("Convolution using GPU\n");
-        fr.write(time_stats(conv_avg_gpu));
+                printf("Convolution GPU interation %d ✅\n", i + 1);
+                free(mat_res_gpu);
+            }
+            printf("\n");
+        }
+
+        conv_avg_cpu /= n_test;
+        conv_avg_gpu /= n_test;
+
+        if (!cpu_flag) {
+            fr.write("🔸 Convolution using CPU\n");
+            fr.write(time_stats(conv_avg_cpu));
+        }
+        if (!gpu_flag) {
+            fr.write("🔸 Convolution using GPU\n");
+            fr.write(time_stats(conv_avg_gpu / 1000));
+        }
 
         free(mat_start);
         free(mask);
@@ -133,6 +153,7 @@ int main(int argc, char* argv[]) {
         // -------------------------------
         // Matrix Multiplication section
         // -------------------------------
+
         float* mat_a = (float*)malloc(sizes[k] * sizes[k] * sizeof(float));
         float* mat_b = (float*)malloc(sizes[k] * sizes[k] * sizeof(float));
 
@@ -151,66 +172,63 @@ int main(int argc, char* argv[]) {
             mat_b_half[i] = __float2half(1);
         }
 
-        for (int i = 0; i < N_TEST; i++) {
-            // Matrix Multiplication on CPU
-            mat_res = (float*)calloc(sizes[k] * sizes[k], sizeof(float));
-            mm_avg_cpu += mm_cpu(mat_a, mat_b, mat_res, sizes[k]);
+        // Matrix Multiplication on CPU
+        if (!cpu_flag) {
+            for (int i = 0; i < n_test; i++) {
+                mat_res = (float*)calloc(sizes[k] * sizes[k], sizeof(float));
+                mm_avg_cpu += mm_cpu(mat_a, mat_b, mat_res, sizes[k]);
 
-            printf("Matrix multiplication CPU interation %d completed, result: ", i + 1);
-            if (mm_checker(mat_res, sizes[k])) {
-                PRINT_GREEN("Correct");
-            } else {
-                PRINT_RED("Incorrect");
+                printf("Matrix Multiplication CPU interation %d ", i + 1);
+                mm_checker(mat_res, sizes[k]) ? printf("✅\n") : printf("❌\n");
+
+                free(mat_res);
             }
             printf("\n");
-
-            free(mat_res);
         }
-        printf("\n");
 
-        for (int i = 0; i < N_TEST; i++) {
+        if (!gpu_flag) {
             // Matrix Multiplication on GPU
-            mat_res = (float*)calloc(sizes[k] * sizes[k], sizeof(float));
-            mm_avg_gpu += mm_gpu(mat_a, mat_b, mat_res, sizes[k]);
+            for (int i = 0; i < n_test; i++) {
+                mat_res = (float*)calloc(sizes[k] * sizes[k], sizeof(float));
+                mm_avg_gpu += mm_gpu(mat_a, mat_b, mat_res, sizes[k]);
 
-            printf("Matrix multiplication GPU interation %d completed, result: ", i + 1);
-            if (mm_checker(mat_res, sizes[k])) {
-                PRINT_GREEN("Correct");
-            } else {
-                PRINT_RED("Incorrect");
+                printf("Matrix multiplication GPU interation %d ", i + 1);
+                mm_checker(mat_res, sizes[k]) ? printf("✅\n") : printf("❌\n");
+
+                free(mat_res);
             }
             printf("\n");
-
-            free(mat_res);
         }
-        printf("\n");
 
-        for (int i = 0; i < N_TEST; i++) {
-            // Matrix Multiplication on Tensor
-            mat_res = (float*)calloc(sizes[k] * sizes[k], sizeof(float));
-            mm_avg_tensor += mm_tensor(mat_a_half, mat_b_half, mat_res, sizes[k]);
+        // Matrix Multiplication on Tensor
+        if (!tensor_flag) {
+            for (int i = 0; i < n_test; i++) {
+                mat_res = (float*)calloc(sizes[k] * sizes[k], sizeof(float));
+                mm_avg_tensor += mm_tensor(mat_a_half, mat_b_half, mat_res, sizes[k]);
 
-            printf("Matrix multiplication Tensor interation %d completed, result: ", i + 1);
-            if (mm_checker(mat_res, sizes[k])) {
-                PRINT_GREEN("Correct");
-            } else {
-                PRINT_RED("Incorrect");
+                printf("Matrix multiplication Tensor interation %d ", i + 1);
+                mm_checker(mat_res, sizes[k]) ? printf("✅\n") : printf("❌\n");
+
+                free(mat_res);
             }
-            printf("\n");
-
-            free(mat_res);
         }
 
-        mm_avg_cpu /= N_TEST;
-        mm_avg_gpu /= N_TEST;
-        mm_avg_tensor /= N_TEST;
+        mm_avg_cpu /= n_test;
+        mm_avg_gpu /= n_test;
+        mm_avg_tensor /= n_test;
 
-        fr.write("Matrix Multiplication using CPU\n");
-        fr.write(time_stats(mm_avg_cpu));
-        fr.write("Matrix Multiplication using GPU\n");
-        fr.write(time_stats(mm_avg_gpu));
-        fr.write("Matrix Multiplication using Tensor\n");
-        fr.write(time_stats(mm_avg_tensor));
+        if (!cpu_flag) {
+            fr.write("Matrix Multiplication using CPU\n");
+            fr.write(time_stats(mm_avg_cpu));
+        }
+        if (!gpu_flag) {
+            fr.write("Matrix Multiplication using GPU\n");
+            fr.write(time_stats(mm_avg_gpu / 1000));
+        }
+        if (!tensor_flag) {
+            fr.write("Matrix Multiplication using Tensor\n");
+            fr.write(time_stats(mm_avg_tensor / 1000));
+        }
 
         free(mat_a);
         free(mat_b);
@@ -218,9 +236,10 @@ int main(int argc, char* argv[]) {
         free(mat_b_half);
 
         fr.write("\n");
-
         printf("\n");
     }
+    fr.write("Benchmark completed 😎 🎉\n");
+    printf("Benchmark completed 😎 🎉\n");
 
     return 0;
 }

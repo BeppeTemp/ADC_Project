@@ -7,6 +7,7 @@
 
 using namespace nvcuda;
 
+// Kernels
 __global__ void mm_tiled_kernel(float* mat_a, float* mat_b, float* res_mat, int size) {
     __shared__ float sA[BLOCK_DIM][BLOCK_DIM];
     __shared__ float sB[BLOCK_DIM][BLOCK_DIM];
@@ -168,7 +169,7 @@ double mm_tensor(half* mat_a, half* mat_b, float* mat_res, int size) {
     return elapsed;
 }
 
-// Matrix Checker, abbiamo sostituito mat_res[i]!=16 con !=size
+// Checker
 bool mm_checker(float* mat_res, int size) {
     for (int i = 0; i < size * size; i++)
         if (mat_res[i] != size)

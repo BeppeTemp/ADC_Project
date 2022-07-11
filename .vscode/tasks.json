@@ -101,7 +101,7 @@
     {
       "id": "Argument",
       "type": "promptString",
-      "default": "--size 16",
+      "default": "",
       "description": "Argument to pass to the executable"
     }
   ]
