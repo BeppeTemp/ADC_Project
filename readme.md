@@ -2,8 +2,13 @@
 
 The purpose of the project is present a simple benchmark suit, of **NVIDIA Tensor Core**. The benchmark suite is written in **C++** and use **Boost Programm Options** library for manage various program flag that allow to customize benchmark execution:
 
-```
-ciao
+```txt
+Allowed options:
+  --help                      Produce help message.
+  -c [ --exclude-cpu ]        Activate CPU tests.
+  -g [ --exclude-gpu ]        Exclude GPU tests.
+  -t [ --exclude-tensor ]     Exclude MMA tests.
+  -i [ --iteration ] arg (=5) Set iteration number for avg calculation.
 ```
 
 ### Operation supported

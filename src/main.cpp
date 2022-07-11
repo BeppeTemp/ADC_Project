@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
     options_description desc("Allowed options");
     desc.add_options()
         ("help", "Produce help message.")
-        ("exclude-cpu,c", bool_switch()->default_value(false), "Exclude CPU tests.")
+        ("exclude-cpu,c", bool_switch()->default_value(false), "Activate CPU tests.")
         ("exclude-gpu,g", bool_switch()->default_value(false), "Exclude GPU tests.")
         ("exclude-tensor,t", bool_switch()->default_value(false), "Exclude MMA tests.")
         ("iteration,i", value<int>()->default_value(5), "Set iteration number for avg calculation.");
@@ -97,7 +97,7 @@ int main(int argc, char* argv[]) {
             mask[i] = 1;
 
         // Convolution on CPU
-        if (!cpu_flag) {
+        if (cpu_flag) {
             for (int i = 0; i < n_test; i++) {
                 float* mat_res_cpu = (float*)calloc(sizes[k] * sizes[k], sizeof(float));
                 conv_avg_cpu += conv_cpu(mat_start, mask, mat_res_cpu, sizes[k]);
@@ -123,7 +123,7 @@ int main(int argc, char* argv[]) {
         conv_avg_cpu /= n_test;
         conv_avg_gpu /= n_test;
 
-        if (!cpu_flag) {
+        if (cpu_flag) {
             fr.write("🔸 Convolution using CPU\n");
             fr.write(time_stats(conv_avg_cpu));
         }
@@ -158,7 +158,7 @@ int main(int argc, char* argv[]) {
         }
 
         // Matrix Multiplication on CPU
-        if (!cpu_flag) {
+        if (cpu_flag) {
             for (int i = 0; i < n_test; i++) {
                 mat_res = (float*)calloc(sizes[k] * sizes[k], sizeof(float));
                 mm_avg_cpu += mm_cpu(mat_a, mat_b, mat_res, sizes[k]);
@@ -202,7 +202,7 @@ int main(int argc, char* argv[]) {
         mm_avg_gpu /= n_test;
         mm_avg_tensor /= n_test;
 
-        if (!cpu_flag) {
+        if (cpu_flag) {
             fr.write("Matrix Multiplication using CPU\n");
             fr.write(time_stats(mm_avg_cpu));
         }
