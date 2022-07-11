@@ -1,51 +1,171 @@
 ---------------------------------------
 	ℹ️ Result test 1 (size 1024) ℹ️
 ---------------------------------------
+🔸 Convolution using CPU
+Execution times ⏱: 
+	🔹 6709.366001 μs
+	🔹 6.709366 ms
+	🔹 0.006709 s
+
+🔸 Convolution using GPU
+Execution times ⏱: 
+	🔹 118.009602 μs
+	🔹 0.118010 ms
+	🔹 0.000118 s
+
+Matrix Multiplication using CPU
+Execution times ⏱: 
+	🔹 40727.315600 μs
+	🔹 40.727316 ms
+	🔹 0.040727 s
+
+Matrix Multiplication using GPU
+Execution times ⏱: 
+	🔹 3083.155155 μs
+	🔹 3.083155 ms
+	🔹 0.003083 s
+
 Matrix Multiplication using Tensor
 Execution times ⏱: 
-	🔹 901.292813 μs
-	🔹 0.901293 ms
-	🔹 0.000901 s
+	🔹 881.350398 μs
+	🔹 0.881350 ms
+	🔹 0.000881 s
 
 
 ---------------------------------------
 	ℹ️ Result test 2 (size 2048) ℹ️
 ---------------------------------------
+🔸 Convolution using CPU
+Execution times ⏱: 
+	🔹 24421.765000 μs
+	🔹 24.421765 ms
+	🔹 0.024422 s
+
+🔸 Convolution using GPU
+Execution times ⏱: 
+	🔹 437.324798 μs
+	🔹 0.437325 ms
+	🔹 0.000437 s
+
+Matrix Multiplication using CPU
+Execution times ⏱: 
+	🔹 545934.230000 μs
+	🔹 545.934230 ms
+	🔹 0.545934 s
+
+Matrix Multiplication using GPU
+Execution times ⏱: 
+	🔹 24011.711884 μs
+	🔹 24.011712 ms
+	🔹 0.024012 s
+
 Matrix Multiplication using Tensor
 Execution times ⏱: 
-	🔹 6905.356789 μs
-	🔹 6.905357 ms
-	🔹 0.006905 s
+	🔹 5424.819183 μs
+	🔹 5.424819 ms
+	🔹 0.005425 s
 
 
 ---------------------------------------
 	ℹ️ Result test 3 (size 4096) ℹ️
 ---------------------------------------
+🔸 Convolution using CPU
+Execution times ⏱: 
+	🔹 106379.542200 μs
+	🔹 106.379542 ms
+	🔹 0.106380 s
+
+🔸 Convolution using GPU
+Execution times ⏱: 
+	🔹 1245.280004 μs
+	🔹 1.245280 ms
+	🔹 0.001245 s
+
+Matrix Multiplication using CPU
+Execution times ⏱: 
+	🔹 20896349.032200 μs
+	🔹 20896.349032 ms
+	🔹 20.896349 s
+
+Matrix Multiplication using GPU
+Execution times ⏱: 
+	🔹 145265.850830 μs
+	🔹 145.265851 ms
+	🔹 0.145266 s
+
 Matrix Multiplication using Tensor
 Execution times ⏱: 
-	🔹 41094.310760 μs
-	🔹 41.094311 ms
-	🔹 0.041094 s
+	🔹 37539.052582 μs
+	🔹 37.539053 ms
+	🔹 0.037539 s
 
 
 ---------------------------------------
 	ℹ️ Result test 4 (size 8192) ℹ️
 ---------------------------------------
+🔸 Convolution using CPU
+Execution times ⏱: 
+	🔹 425060.223000 μs
+	🔹 425.060223 ms
+	🔹 0.425060 s
+
+🔸 Convolution using GPU
+Execution times ⏱: 
+	🔹 6386.265564 μs
+	🔹 6.386266 ms
+	🔹 0.006386 s
+
+Matrix Multiplication using CPU
+Execution times ⏱: 
+	🔹 203777521.089000 μs
+	🔹 203777.521089 ms
+	🔹 203.777521 s
+
+Matrix Multiplication using GPU
+Execution times ⏱: 
+	🔹 1119823.876953 μs
+	🔹 1119.823877 ms
+	🔹 1.119824 s
+
 Matrix Multiplication using Tensor
 Execution times ⏱: 
-	🔹 301901.330566 μs
-	🔹 301.901331 ms
-	🔹 0.301901 s
+	🔹 301481.768799 μs
+	🔹 301.481769 ms
+	🔹 0.301482 s
 
 
 ---------------------------------------
 	ℹ️ Result test 5 (size 16384) ℹ️
 ---------------------------------------
+🔸 Convolution using CPU
+Execution times ⏱: 
+	🔹 1744806.188200 μs
+	🔹 1744.806188 ms
+	🔹 1.744806 s
+
+🔸 Convolution using GPU
+Execution times ⏱: 
+	🔹 23848.332596 μs
+	🔹 23.848333 ms
+	🔹 0.023848 s
+
+Matrix Multiplication using CPU
+Execution times ⏱: 
+	🔹 1707903634.120000 μs
+	🔹 1707903.634120 ms
+	🔹 1707.903634 s
+
+Matrix Multiplication using GPU
+Execution times ⏱: 
+	🔹 9073869.921875 μs
+	🔹 9073.869922 ms
+	🔹 9.073870 s
+
 Matrix Multiplication using Tensor
 Execution times ⏱: 
-	🔹 3104313.769531 μs
-	🔹 3104.313770 ms
-	🔹 3.104314 s
+	🔹 3129395.312500 μs
+	🔹 3129.395312 ms
+	🔹 3.129395 s
 
 
 Benchmark completed 😎 🎉

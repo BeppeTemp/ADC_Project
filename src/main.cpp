@@ -10,7 +10,7 @@
 using namespace boost::program_options;
 using namespace std;
 
-// Report file object
+//Report file object
 class File_Report {
 public:
     ofstream report;
@@ -19,22 +19,7 @@ public:
     ~File_Report() { report.close(); }
 };
 
-// Functions
-void printMat(float* mat, int size) {
-    // Print the entire matrix
-    printf("\n");
-    for (int i = 0; i < (size * size); i++) {
-        printf("|");
-        printf("%05.2f", mat[i]);
-        if (((i + 1) % (size) == 0) && (i != 0))
-            printf("|\n");
-        if ((size * size) == 1)
-            printf("|\n");
-        if (size == 1 && ((i == 0)))
-            printf("|\n");
-    }
-    printf("\n");
-}
+//Function to convert and print times
 string time_stats(double seconds) {
     return string("Execution times ⏱: \n") + string("\t🔹 ") + to_string(seconds * 1000 * 1000) + string(" μs\n") + string("\t🔹 ") +
         to_string(seconds * 1000) + string(" ms\n") + string("\t🔹 ") + to_string(seconds) + string(" s\n") + string("\n");
@@ -78,7 +63,7 @@ int main(int argc, char* argv[]) {
 
     File_Report fr;
 
-    int sizes[5] = {1024, 2048, 4096, 8192, 16384};
+    int sizes[5] = { 1024, 2048, 4096, 8192, 16384 };
     // int sizes[5] = {1024, 1024, 1024, 1024, 1024};
     // int sizes[5] = { 32, 32, 32, 32, 32 };
 
@@ -186,8 +171,8 @@ int main(int argc, char* argv[]) {
             printf("\n");
         }
 
+        // Matrix Multiplication on GPU
         if (!gpu_flag) {
-            // Matrix Multiplication on GPU
             for (int i = 0; i < n_test; i++) {
                 mat_res = (float*)calloc(sizes[k] * sizes[k], sizeof(float));
                 mm_avg_gpu += mm_gpu(mat_a, mat_b, mat_res, sizes[k]);
