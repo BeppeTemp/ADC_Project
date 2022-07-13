@@ -22,12 +22,14 @@ __global__ void mm_tiled_kernel(float* mat_a, float* mat_b, float* res_mat, int 
     for (int k = 0; k < (((size - 1) / BLOCK_DIM) + 1); k++) {
         if ((Row < size) && (threadIdx.x + (k * BLOCK_DIM)) < size) {
             sA[threadIdx.y][threadIdx.x] = mat_a[(Row * size) + threadIdx.x + (k * BLOCK_DIM)];
-        } else {
+        }
+        else {
             sA[threadIdx.y][threadIdx.x] = 0.0;
         }
         if (Col < size && (threadIdx.y + k * BLOCK_DIM) < size) {
             sB[threadIdx.y][threadIdx.x] = mat_b[(threadIdx.y + k * BLOCK_DIM) * size + Col];
-        } else {
+        }
+        else {
             sB[threadIdx.y][threadIdx.x] = 0.0;
         }
         __syncthreads();
@@ -84,7 +86,7 @@ double mm_cpu(float* mat_a, float* mat_b, float* mat_res, int size) {
 
     #pragma omp parallel for
     for (int col_chunk = 0; col_chunk < size; col_chunk += 16)
-        #pragma omp parallel for collapse(2)
+        #pragma omp parallel for
         for (int row = 0; row < size; row++)
             for (int tile = 0; tile < size; tile += 16)
                 for (int tile_row = 0; tile_row < 16; tile_row++)
@@ -94,7 +96,7 @@ double mm_cpu(float* mat_a, float* mat_b, float* mat_res, int size) {
     return omp_get_wtime() - t_init;
 }
 double mm_gpu(float* mat_a, float* mat_b, float* mat_res, int size) {
-    float *res_mat_dev, *mat_a_dev, *mat_b_dev;
+    float* res_mat_dev, * mat_a_dev, * mat_b_dev;
 
     cudaMalloc((void**)&mat_a_dev, size * size * sizeof(float));
     cudaMalloc((void**)&mat_b_dev, size * size * sizeof(float));
@@ -116,7 +118,7 @@ double mm_gpu(float* mat_a, float* mat_b, float* mat_res, int size) {
     cudaEventCreate(&stop);
 
     cudaEventRecord(start);
-    mm_tiled_kernel<<<gridDim, blockDim>>>(mat_a_dev, mat_b_dev, res_mat_dev, size);
+    mm_tiled_kernel << <gridDim, blockDim >> > (mat_a_dev, mat_b_dev, res_mat_dev, size);
     cudaEventRecord(stop);
 
     cudaMemcpy(mat_res, res_mat_dev, size * size * sizeof(float), cudaMemcpyDeviceToHost);
@@ -131,7 +133,7 @@ double mm_gpu(float* mat_a, float* mat_b, float* mat_res, int size) {
     return elapsed;
 }
 double mm_tensor(half* mat_a, half* mat_b, float* mat_res, int size) {
-    half *mat_b_dev, *mat_a_dev;
+    half* mat_b_dev, * mat_a_dev;
     float* res_mat_dev;
 
     cudaMalloc((void**)&mat_a_dev, size * size * sizeof(half));
@@ -154,7 +156,7 @@ double mm_tensor(half* mat_a, half* mat_b, float* mat_res, int size) {
     cudaEventCreate(&stop);
 
     cudaEventRecord(start);
-    mm_tensor_kernel<<<gridDim, blockDim>>>(mat_a_dev, mat_b_dev, res_mat_dev, size);
+    mm_tensor_kernel << <gridDim, blockDim >> > (mat_a_dev, mat_b_dev, res_mat_dev, size);
     cudaEventRecord(stop);
 
     cudaMemcpy(mat_res, res_mat_dev, size * size * sizeof(float), cudaMemcpyDeviceToHost);
